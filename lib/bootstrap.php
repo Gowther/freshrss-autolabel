@@ -3026,9 +3026,10 @@ final class AutoLabelEntryPersistence {
 			static fn (string $tag): bool => !in_array($tag, $existingTags, true)
 		));
 		$resolvedTags = self::ensureTagsExist($newTags);
-		$appliedTags = array_values(array_unique(array_merge($existingTags, $resolvedTags['applied_tags'])));
+		$newlyAppliedTags = $resolvedTags['applied_tags'];
+		$appliedTags = array_values(array_unique(array_merge($existingTags, $newlyAppliedTags)));
 		$failedTags = $resolvedTags['failed_tags'];
-		if (count($resolvedTags['applied_tags']) === 0) {
+		if (count($newlyAppliedTags) === 0) {
 			return [
 				'updated' => false,
 				'applied_tags' => [],
@@ -3036,7 +3037,7 @@ final class AutoLabelEntryPersistence {
 			];
 		}
 
-		$updated = AutoLabelQueueUpdateGuard::withoutQueueing(static function () use ($entryDao, $entry, $appliedTags): bool {
+		$updated = AutoLabelQueueUpdateGuard::withoutQueueing(static function () use ($entryDao, $entry, $appliedTags, $newlyAppliedTags): bool {
 			$entry->_tags($appliedTags);
 			$payload = [
 				'id' => $entry->id(),
@@ -3061,7 +3062,7 @@ final class AutoLabelEntryPersistence {
 				return false;
 			}
 
-			self::ensureEntryTagLinks($entry, $resolvedTags['applied_tags']);
+			self::ensureEntryTagLinks($entry, $newlyAppliedTags);
 			return true;
 		});
 
