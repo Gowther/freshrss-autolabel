@@ -225,6 +225,10 @@ final class AutoLabelExtension extends Minz_Extension {
 
 	public function runQueueMaintenance(): void {
 		try {
+			if ($this->isWebFeedRefreshRequest()) {
+				return;
+			}
+
 			$this->drainQueueUntilIdle([
 				'max_runtime_seconds' => 20.0,
 				'max_processed_items' => 500,
@@ -236,6 +240,17 @@ final class AutoLabelExtension extends Minz_Extension {
 		} catch (Throwable $throwable) {
 			Minz_Log::warning('AutoLabel queue maintenance failed: ' . $throwable->getMessage());
 		}
+	}
+
+	private function isWebFeedRefreshRequest(): bool {
+		if (PHP_SAPI === 'cli') {
+			return false;
+		}
+		if (!class_exists('Minz_Request')) {
+			return false;
+		}
+
+		return (Minz_Request::is('feed', 'actualize') || Minz_Request::is('javascript', 'actualize'));
 	}
 
 	/**
