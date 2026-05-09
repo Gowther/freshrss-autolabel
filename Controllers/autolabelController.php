@@ -54,7 +54,11 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 			'queue_batch_url' => _url('autolabel', 'processQueueBatch'),
 			'queue_manual_start_url' => _url('autolabel', 'startManualQueue'),
 			'queue_manual_status_url' => _url('autolabel', 'manualQueueStatus'),
-			'queue_cron_url' => $canAdmin ? _url('autolabel', 'cronQueue', 'token', $this->extension->queueCronToken()) : '',
+			'queue_cron_url' => $canAdmin ? Minz_Url::display([
+				'c' => 'autolabel',
+				'a' => 'cronQueue',
+				'params' => ['token' => $this->extension->queueCronToken()],
+			], 'php') : '',
 			'tag_management_url' => _url('tag', 'index'),
 			'profile_capabilities' => $this->extension->profileCapabilities(),
 			'profile_form' => $canAdmin
