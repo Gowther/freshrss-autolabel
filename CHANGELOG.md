@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2
+
+- Make aggregate LLM decision parsing tolerant of nested matrix responses and common field aliases
+- Avoid false `The model did not return a decision for this article and rule.` errors when the model returns an equivalent JSON shape
+
 ## 0.5.1
 
 - Fix tag persistence diagnostics so `failed_tags` only reports newly matched target tags that cannot be resolved

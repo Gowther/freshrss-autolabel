@@ -2788,17 +2788,16 @@ final class AutoLabelEngine {
 			return [];
 		}
 
-		$items = is_array($decoded['results'] ?? null) ? $decoded['results'] : [];
 		$decisions = [];
-		foreach ($items as $item) {
+		foreach ($this->llmMatrixDecisionItems($decoded, $singleTaskId) as $item) {
 			if (!is_array($item)) {
 				continue;
 			}
-			$taskId = trim((string)($item['task_id'] ?? ''));
+			$taskId = $this->matrixDecisionString($item, ['task_id', 'taskId', 'article_id', 'articleId', 'entry_id', 'entryId', 'item_id', 'itemId']);
 			if ($taskId === '' && $singleTaskId !== null) {
 				$taskId = $singleTaskId;
 			}
-			$ruleId = trim((string)($item['rule_id'] ?? ''));
+			$ruleId = $this->matrixDecisionString($item, ['rule_id', 'ruleId', 'rule', 'id']);
 			if ($taskId === '' || $ruleId === '') {
 				continue;
 			}
@@ -2810,13 +2809,112 @@ final class AutoLabelEngine {
 				$decisions[$taskId] = [];
 			}
 			$decisions[$taskId][$ruleId] = [
-				'match' => (bool)($item['match'] ?? false),
+				'match' => $this->matrixDecisionMatch($item),
 				'confidence' => $confidence,
-				'reason' => trim((string)($item['reason'] ?? '')),
+				'reason' => $this->matrixDecisionString($item, ['reason', 'explanation', 'rationale']),
 			];
 		}
 
 		return $decisions;
+	}
+
+	/**
+	 * @param mixed $value
+	 * @return list<array<string,mixed>>
+	 */
+	private function llmMatrixDecisionItems($value, ?string $taskId = null, ?string $ruleId = null): array {
+		if (!is_array($value)) {
+			return [];
+		}
+
+		if ($this->isMatrixDecisionItem($value)) {
+			$item = $value;
+			if ($taskId !== null && $this->matrixDecisionString($item, ['task_id', 'taskId', 'article_id', 'articleId', 'entry_id', 'entryId', 'item_id', 'itemId']) === '') {
+				$item['task_id'] = $taskId;
+			}
+			if ($ruleId !== null && $this->matrixDecisionString($item, ['rule_id', 'ruleId', 'rule', 'id']) === '') {
+				$item['rule_id'] = $ruleId;
+			}
+			return [$item];
+		}
+
+		foreach (['results', 'decisions', 'classifications', 'items', 'matrix'] as $key) {
+			if (is_array($value[$key] ?? null)) {
+				return $this->llmMatrixDecisionItems($value[$key], $taskId, $ruleId);
+			}
+		}
+
+		$items = [];
+		if (array_is_list($value)) {
+			foreach ($value as $index => $nested) {
+				$nestedTaskId = $taskId;
+				if ($nestedTaskId === null && is_array($nested) && !$this->isMatrixDecisionItem($nested)) {
+					$nestedTaskId = (string)$index;
+				}
+				$items = array_merge($items, $this->llmMatrixDecisionItems($nested, $nestedTaskId, $ruleId));
+			}
+			return $items;
+		}
+
+		foreach ($value as $key => $nested) {
+			if (!is_array($nested)) {
+				continue;
+			}
+			$keyString = trim((string)$key);
+			if ($taskId === null) {
+				$items = array_merge($items, $this->llmMatrixDecisionItems($nested, $keyString !== '' ? $keyString : null, $ruleId));
+				continue;
+			}
+			$items = array_merge($items, $this->llmMatrixDecisionItems($nested, $taskId, $keyString !== '' ? $keyString : $ruleId));
+		}
+
+		return $items;
+	}
+
+	/**
+	 * @param array<string,mixed> $item
+	 */
+	private function isMatrixDecisionItem(array $item): bool {
+		foreach (['match', 'matched', 'is_match', 'isMatch', 'decision'] as $key) {
+			if (array_key_exists($key, $item)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @param array<string,mixed> $item
+	 * @param list<string> $keys
+	 */
+	private function matrixDecisionString(array $item, array $keys): string {
+		foreach ($keys as $key) {
+			if (isset($item[$key]) && is_scalar($item[$key])) {
+				return trim((string)$item[$key]);
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * @param array<string,mixed> $item
+	 */
+	private function matrixDecisionMatch(array $item): bool {
+		foreach (['match', 'matched', 'is_match', 'isMatch', 'decision'] as $key) {
+			if (!array_key_exists($key, $item)) {
+				continue;
+			}
+			$value = $item[$key];
+			if (is_bool($value)) {
+				return $value;
+			}
+			if (is_numeric($value)) {
+				return ((float)$value) !== 0.0;
+			}
+			$normalized = strtolower(trim((string)$value));
+			return in_array($normalized, ['true', 'yes', 'y', '1', 'match', 'matched', 'relevant'], true);
+		}
+		return false;
 	}
 
 	/**
