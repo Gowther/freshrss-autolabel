@@ -1,12 +1,12 @@
-window.__AutoLabelScriptVersion = '0.5.3-tabs-v1';
+window.__AutoLabelScriptVersion = '0.5.4-ajax-v1';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {
+  let activateDashboardTab = () => {};
   const tabsRoot = document.querySelector('[data-autolabel-tabs]');
   if (tabsRoot) {
     const page = document.querySelector('[data-autolabel-default-tab]');
     const tabs = Array.from(tabsRoot.querySelectorAll('[data-autolabel-tab]'));
-    const panels = Array.from(document.querySelectorAll('[data-autolabel-panel]'));
     const knownTabs = new Set(tabs.map((tab) => tab.dataset.autolabelTab).filter(Boolean));
     const defaultTab = knownTabs.has(page?.dataset.autolabelDefaultTab ?? '')
       ? page.dataset.autolabelDefaultTab
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.setAttribute('tabindex', isActive ? '0' : '-1');
       }
 
-      for (const panel of panels) {
+      for (const panel of document.querySelectorAll('[data-autolabel-panel]')) {
         panel.hidden = panel.dataset.autolabelPanel !== nextTab;
       }
 
@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.pushState(null, '', `#autolabel-${nextTab}`);
       }
     };
+    activateDashboardTab = activateTab;
 
     const focusTabByOffset = (currentTab, offset) => {
       const currentIndex = tabs.indexOf(currentTab);
@@ -312,6 +313,392 @@ document.addEventListener('DOMContentLoaded', () => {
   for (let index = 1; index <= 10; index++) {
     window.setTimeout(syncRuleNameFromSelectedTags, index * 300);
   }
+
+  const ajaxActionNames = [
+    'saveProfile',
+    'deleteProfile',
+    'toggleProfile',
+    'testProfile',
+    'saveRule',
+    'deleteRule',
+    'toggleRule',
+    'dryRun',
+    'backfill',
+    'clearQueue',
+    'saveDiagnostics',
+    'clearDiagnostics',
+  ];
+
+  const actionNameFromUrl = (url) => ajaxActionNames.find((actionName) => String(url).includes(actionName)) ?? '';
+
+  const showFeedback = (message, ok = true) => {
+    const feedback = document.querySelector('[data-autolabel-feedback]');
+    if (!(feedback instanceof HTMLElement) || typeof message !== 'string' || message.trim() === '') {
+      return;
+    }
+
+    feedback.textContent = message.trim();
+    feedback.hidden = false;
+    feedback.classList.toggle('autolabel-feedback--error', !ok);
+  };
+
+  const parseActionJsonResponse = async (response) => {
+    const raw = await response.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (error) {
+      const snippet = raw.replace(/\s+/g, ' ').trim().slice(0, 180);
+      throw new Error(snippet === '' ? 'Request failed.' : snippet);
+    }
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(String(data.message || data.error || 'Request failed.'));
+    }
+
+    return data;
+  };
+
+  const fetchAutolabelDocument = async (url) => {
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'text/html',
+      },
+    });
+    const html = await response.text();
+    if (!response.ok) {
+      throw new Error(html.replace(/\s+/g, ' ').trim().slice(0, 180) || 'Request failed.');
+    }
+
+    return new DOMParser().parseFromString(html, 'text/html');
+  };
+
+  const enhanceProfileControls = (scope) => {
+    const providerDefaults = {
+      llm: {
+        openai: 'https://api.openai.com/v1/responses',
+        anthropic: 'https://api.anthropic.com/v1/messages',
+        gemini: 'https://generativelanguage.googleapis.com',
+        ollama: 'http://127.0.0.1:11434/api/chat',
+      },
+      embedding: {
+        openai: 'https://api.openai.com/v1/embeddings',
+        anthropic: '',
+        gemini: 'https://generativelanguage.googleapis.com',
+        ollama: 'http://127.0.0.1:11434/api/embed',
+      },
+    };
+
+    for (const form of scope.querySelectorAll('[data-autolabel-profile-form]')) {
+      if (!(form instanceof HTMLFormElement) || form.dataset.autolabelControlsEnhanced === 'true') {
+        continue;
+      }
+
+      form.dataset.autolabelControlsEnhanced = 'true';
+      const providerSelect = form.querySelector('[data-autolabel-provider]');
+      const baseUrlInput = form.querySelector('input[name="base_url"]');
+      const profileModeSelect = form.querySelector('[data-autolabel-profile-mode]');
+      const llmPanel = form.querySelector('[data-autolabel-profile-panel="llm"]');
+      const embeddingPanel = form.querySelector('[data-autolabel-profile-panel="embedding"]');
+      let previousProvider = providerSelect?.value ?? '';
+      let previousMode = profileModeSelect?.value === 'embedding' ? 'embedding' : 'llm';
+
+      const applyProfileMode = () => {
+        if (!profileModeSelect || !llmPanel || !embeddingPanel) {
+          return;
+        }
+
+        llmPanel.hidden = profileModeSelect.value !== 'llm';
+        embeddingPanel.hidden = profileModeSelect.value !== 'embedding';
+      };
+
+      const applyProviderCapabilities = () => {
+        if (!providerSelect || !profileModeSelect) {
+          return;
+        }
+
+        const embeddingOption = Array.from(profileModeSelect.options).find((option) => option.value === 'embedding');
+        const isAnthropic = providerSelect.value === 'anthropic';
+        if (embeddingOption) {
+          embeddingOption.disabled = isAnthropic;
+        }
+        if (isAnthropic && profileModeSelect.value === 'embedding') {
+          profileModeSelect.value = 'llm';
+        }
+        applyProfileMode();
+      };
+
+      const syncBaseUrlForProviderChange = () => {
+        if (!providerSelect || !(baseUrlInput instanceof HTMLInputElement)) {
+          return;
+        }
+
+        const nextProvider = providerSelect.value;
+        const nextMode = profileModeSelect?.value === 'embedding' ? 'embedding' : 'llm';
+        if (nextProvider === previousProvider && nextMode === previousMode && baseUrlInput.value.trim() !== '') {
+          return;
+        }
+
+        const currentValue = baseUrlInput.value.trim();
+        const knownDefaults = Object.values(providerDefaults)
+          .flatMap((defaults) => Object.values(defaults))
+          .filter((value) => value !== '');
+        const nextDefault = providerDefaults[nextMode]?.[nextProvider] ?? '';
+        const canReplace = currentValue === '' || knownDefaults.includes(currentValue);
+
+        if (nextProvider === 'ollama' && nextDefault !== '') {
+          baseUrlInput.value = nextDefault;
+        } else if (canReplace && nextDefault !== '') {
+          baseUrlInput.value = nextDefault;
+        }
+
+        previousProvider = nextProvider;
+        previousMode = nextMode;
+      };
+
+      providerSelect?.addEventListener('change', () => {
+        applyProviderCapabilities();
+        syncBaseUrlForProviderChange();
+      });
+      profileModeSelect?.addEventListener('change', () => {
+        applyProfileMode();
+        syncBaseUrlForProviderChange();
+      });
+      applyProviderCapabilities();
+      applyProfileMode();
+      previousProvider = providerSelect?.value ?? previousProvider;
+      previousMode = profileModeSelect?.value === 'embedding' ? 'embedding' : 'llm';
+    }
+  };
+
+  const enhanceRuleControls = (scope) => {
+    for (const form of scope.querySelectorAll('[data-autolabel-rule-form]')) {
+      if (!(form instanceof HTMLFormElement) || form.dataset.autolabelControlsEnhanced === 'true') {
+        continue;
+      }
+
+      form.dataset.autolabelControlsEnhanced = 'true';
+      const profileSelect = form.querySelector('[data-autolabel-profile-select]');
+      const modeSelect = form.querySelector('[data-autolabel-mode-select]');
+      const nameInput = findRuleNameInput(form);
+      const targetTagsSelect = findRuleTargetTagsSelect(form);
+      const llmPanel = form.querySelector('[data-autolabel-mode-panel="llm"]');
+      const embeddingPanel = form.querySelector('[data-autolabel-mode-panel="embedding"]');
+      lastGeneratedRuleName = nameInput?.value.trim() ?? '';
+
+      const syncRuleForm = () => {
+        if (!profileSelect || !modeSelect || !llmPanel || !embeddingPanel) {
+          return;
+        }
+
+        const selectedOption = profileSelect.selectedOptions[0];
+        const supportsLlm = selectedOption?.dataset.supportsLlm === '1';
+        const supportsEmbedding = selectedOption?.dataset.supportsEmbedding === '1';
+        for (const option of modeSelect.options) {
+          const mode = option.value;
+          option.disabled = !((mode === 'llm' && supportsLlm) || (mode === 'embedding' && supportsEmbedding));
+        }
+        if (modeSelect.selectedOptions[0]?.disabled) {
+          if (supportsLlm) {
+            modeSelect.value = 'llm';
+          } else if (supportsEmbedding) {
+            modeSelect.value = 'embedding';
+          }
+        }
+
+        llmPanel.hidden = modeSelect.value !== 'llm';
+        embeddingPanel.hidden = modeSelect.value !== 'embedding';
+      };
+
+      profileSelect?.addEventListener('change', syncRuleForm);
+      modeSelect?.addEventListener('change', syncRuleForm);
+      nameInput?.addEventListener('input', () => {
+        if (nameInput.value.trim() === '') {
+          lastGeneratedRuleName = '';
+          lastSelectedRuleTags = '';
+          window.setTimeout(syncRuleNameFromSelectedTags, 0);
+        }
+      });
+      ['change', 'input', 'click', 'mouseup', 'keyup'].forEach((eventName) => {
+        targetTagsSelect?.addEventListener(eventName, () => window.setTimeout(syncRuleNameFromSelectedTags, 0));
+      });
+      syncRuleForm();
+      if (!nameInput?.value.trim()) {
+        window.setTimeout(syncRuleNameFromSelectedTags, 0);
+      }
+    }
+  };
+
+  const enhanceReplacedPanel = (panel) => {
+    if (!(panel instanceof Element)) {
+      return;
+    }
+
+    enhanceProfileControls(panel);
+    enhanceRuleControls(panel);
+  };
+
+  const updateQueueSnapshotValues = (snapshot) => {
+    if (!snapshot || typeof snapshot !== 'object') {
+      return;
+    }
+
+    const pendingEntries = document.querySelector('[data-autolabel-queue-pending-entries]');
+    const pendingBackfills = document.querySelector('[data-autolabel-queue-pending-backfills]');
+    const pendingBackfillEntries = document.querySelector('[data-autolabel-queue-pending-backfill-entries]');
+    const lastRun = document.querySelector('[data-autolabel-queue-last-run]');
+    if (pendingEntries) {
+      pendingEntries.textContent = String(snapshot.pending_entries ?? '0');
+    }
+    if (pendingBackfills) {
+      pendingBackfills.textContent = String(snapshot.pending_backfills ?? '0');
+    }
+    if (pendingBackfillEntries) {
+      pendingBackfillEntries.textContent = String(snapshot.pending_backfill_entries ?? '0');
+    }
+    if (lastRun) {
+      lastRun.textContent = String(snapshot.last_run?.at ?? '');
+    }
+  };
+
+  const replacePanelFromDocument = (doc, panelName) => {
+    const nextPanel = doc.querySelector(`[data-autolabel-panel="${panelName}"]`);
+    const currentPanel = document.querySelector(`[data-autolabel-panel="${panelName}"]`);
+    if (!nextPanel || !currentPanel) {
+      return;
+    }
+
+    const replacement = nextPanel.cloneNode(true);
+    currentPanel.replaceWith(replacement);
+    enhanceReplacedPanel(replacement);
+  };
+
+  const refreshToolsSelects = (doc) => {
+    for (const selector of ['#autolabel-tools select[name="rule_id"]', '#autolabel-tools select[name="backfill_rule_id"]']) {
+      const currentSelect = document.querySelector(selector);
+      const nextSelect = doc.querySelector(selector);
+      if (!(currentSelect instanceof HTMLSelectElement) || !(nextSelect instanceof HTMLSelectElement)) {
+        continue;
+      }
+
+      const previousValue = currentSelect.value;
+      currentSelect.innerHTML = nextSelect.innerHTML;
+      if (Array.from(currentSelect.options).some((option) => option.value === previousValue)) {
+        currentSelect.value = previousValue;
+      }
+    }
+  };
+
+  const refreshFragments = async (url, refreshPanels, data = {}) => {
+    const panels = Array.isArray(refreshPanels) ? Array.from(new Set(refreshPanels)) : [];
+    if (data.snapshot) {
+      updateQueueSnapshotValues(data.snapshot);
+    }
+    if (panels.length === 0) {
+      return;
+    }
+
+    const needsDocument = panels.some((panel) => ['profiles', 'rules', 'diagnostics', 'tools_selects'].includes(panel));
+    const doc = needsDocument ? await fetchAutolabelDocument(url || window.location.href) : null;
+    for (const panel of panels) {
+      if (panel === 'tools_queue') {
+        if (data.snapshot) {
+          updateQueueSnapshotValues(data.snapshot);
+        }
+        continue;
+      }
+      if (panel === 'tools_selects') {
+        if (doc) {
+          refreshToolsSelects(doc);
+        }
+        continue;
+      }
+      if (doc) {
+        replacePanelFromDocument(doc, panel);
+      }
+    }
+  };
+
+  const replaceHistoryWithTab = (url, tab) => {
+    if (!window.history?.replaceState || typeof tab !== 'string' || tab === '') {
+      return;
+    }
+
+    const baseUrl = String(url || window.location.href).replace(/#.*/, '');
+    window.history.replaceState(null, '', `${baseUrl}#autolabel-${tab}`);
+  };
+
+  document.addEventListener('submit', async (event) => {
+    if (event.defaultPrevented || !(event.target instanceof HTMLFormElement)) {
+      return;
+    }
+
+    const form = event.target;
+    const actionName = actionNameFromUrl(form.action);
+    if (actionName === '') {
+      return;
+    }
+
+    event.preventDefault();
+    const submitter = event.submitter instanceof HTMLButtonElement ? event.submitter : form.querySelector('button[type="submit"]');
+    if (submitter instanceof HTMLButtonElement) {
+      submitter.disabled = true;
+    }
+    form.setAttribute('aria-busy', 'true');
+
+    try {
+      const response = await fetch(form.action, {
+        method: (form.method || 'POST').toUpperCase(),
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: new FormData(form),
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
+        },
+      });
+      const data = await parseActionJsonResponse(response);
+      showFeedback(data.message, true);
+      await refreshFragments(data.refresh_url || window.location.href, data.refresh_panels || [], data);
+      replaceHistoryWithTab(data.refresh_url || window.location.href, data.tab || '');
+      activateDashboardTab(data.tab || '');
+    } catch (error) {
+      showFeedback(error instanceof Error ? error.message : 'Request failed.', false);
+    } finally {
+      form.removeAttribute('aria-busy');
+      if (submitter instanceof HTMLButtonElement) {
+        submitter.disabled = false;
+      }
+    }
+  });
+
+  document.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const link = target.closest('a[data-autolabel-panel-link]');
+    if (!(link instanceof HTMLAnchorElement) || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    event.preventDefault();
+    const panel = link.dataset.autolabelPanelLink || '';
+    try {
+      await refreshFragments(link.href, [panel]);
+      activateDashboardTab(panel);
+      if (window.history?.pushState) {
+        window.history.pushState(null, '', link.href);
+      }
+    } catch (error) {
+      showFeedback(error instanceof Error ? error.message : 'Request failed.', false);
+    }
+  });
 
   const queueForm = document.querySelector('.autolabel-card form[action*="processQueue"]');
   if (queueForm instanceof HTMLFormElement) {

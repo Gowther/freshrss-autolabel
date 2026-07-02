@@ -72,6 +72,10 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireAdmin();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'profiles');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
@@ -97,8 +101,17 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 				'thinking_mode' => Minz_Request::paramString('thinking_mode'),
 			]);
 
-			Minz_Request::good(_t('ext.auto_label.messages.profile_saved', $profile['name']), $redirect);
+			$message = _t('ext.auto_label.messages.profile_saved', $profile['name']);
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(true, $message, 'profiles', ['profiles', 'rules']);
+				return;
+			}
+			Minz_Request::good($message, $redirect);
 		} catch (Throwable $throwable) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, $throwable->getMessage(), 'profiles');
+				return;
+			}
 			Minz_Request::bad($throwable->getMessage(), $redirect);
 		}
 
@@ -109,8 +122,24 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireAdmin();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (Minz_Request::isPost()) {
-			$this->extension->systemProfiles()->delete(Minz_Request::paramString('profile_id'));
-			Minz_Request::good(_t('ext.auto_label.messages.profile_deleted'), $redirect);
+			try {
+				$this->extension->systemProfiles()->delete(Minz_Request::paramString('profile_id'));
+				$message = _t('ext.auto_label.messages.profile_deleted');
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(true, $message, 'profiles', ['profiles', 'rules']);
+					return;
+				}
+				Minz_Request::good($message, $redirect);
+			} catch (Throwable $throwable) {
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(false, $throwable->getMessage(), 'profiles');
+					return;
+				}
+				Minz_Request::bad($throwable->getMessage(), $redirect);
+			}
+		} elseif ($this->isAjaxRequest()) {
+			$this->renderActionJson(false, 'Invalid request.', 'profiles');
+			return;
 		}
 		Minz_Request::forward($redirect, true);
 	}
@@ -124,10 +153,22 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 					Minz_Request::paramString('profile_id'),
 					Minz_Request::paramBoolean('enabled')
 				);
-				Minz_Request::good(_t('ext.auto_label.messages.profile_updated'), $redirect);
+				$message = _t('ext.auto_label.messages.profile_updated');
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(true, $message, 'profiles', ['profiles', 'rules']);
+					return;
+				}
+				Minz_Request::good($message, $redirect);
 			} catch (Throwable $throwable) {
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(false, $throwable->getMessage(), 'profiles');
+					return;
+				}
 				Minz_Request::bad($throwable->getMessage(), $redirect);
 			}
+		} elseif ($this->isAjaxRequest()) {
+			$this->renderActionJson(false, 'Invalid request.', 'profiles');
+			return;
 		}
 		Minz_Request::forward($redirect, true);
 	}
@@ -136,12 +177,20 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireAdmin();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'profiles');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
 
 		$profile = $this->extension->systemProfiles()->find(Minz_Request::paramString('profile_id'));
 		if ($profile === null) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, _t('ext.auto_label.messages.unknown_profile'), 'profiles');
+				return;
+			}
 			Minz_Request::bad(_t('ext.auto_label.messages.unknown_profile'), $redirect);
 			Minz_Request::forward($redirect, true);
 			return;
@@ -164,8 +213,17 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 				'provider' => $profile['provider'],
 				'result' => $result,
 			]);
-			Minz_Request::good(_t('ext.auto_label.messages.profile_tested', $profile['name']), $redirect);
+			$message = _t('ext.auto_label.messages.profile_tested', $profile['name']);
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(true, $message, 'profiles', ['diagnostics'], ['result' => $result]);
+				return;
+			}
+			Minz_Request::good($message, $redirect);
 		} catch (Throwable $throwable) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, $throwable->getMessage(), 'profiles');
+				return;
+			}
 			Minz_Request::bad($throwable->getMessage(), $redirect);
 		}
 
@@ -176,6 +234,10 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'rules');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
@@ -194,8 +256,17 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 				'embedding_threshold' => (float)Minz_Request::paramString('embedding_threshold'),
 				'embedding_instruction' => Minz_Request::paramString('embedding_instruction'),
 			]);
-			Minz_Request::good(_t('ext.auto_label.messages.rule_saved', $rule['name']), $redirect);
+			$message = _t('ext.auto_label.messages.rule_saved', $rule['name']);
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(true, $message, 'rules', ['rules', 'tools_selects']);
+				return;
+			}
+			Minz_Request::good($message, $redirect);
 		} catch (Throwable $throwable) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, $throwable->getMessage(), 'rules');
+				return;
+			}
 			Minz_Request::bad($throwable->getMessage(), $redirect);
 		}
 
@@ -206,8 +277,24 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (Minz_Request::isPost()) {
-			$this->extension->userRules()->delete(Minz_Request::paramString('rule_id'));
-			Minz_Request::good(_t('ext.auto_label.messages.rule_deleted'), $redirect);
+			try {
+				$this->extension->userRules()->delete(Minz_Request::paramString('rule_id'));
+				$message = _t('ext.auto_label.messages.rule_deleted');
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(true, $message, 'rules', ['rules', 'tools_selects']);
+					return;
+				}
+				Minz_Request::good($message, $redirect);
+			} catch (Throwable $throwable) {
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(false, $throwable->getMessage(), 'rules');
+					return;
+				}
+				Minz_Request::bad($throwable->getMessage(), $redirect);
+			}
+		} elseif ($this->isAjaxRequest()) {
+			$this->renderActionJson(false, 'Invalid request.', 'rules');
+			return;
 		}
 		Minz_Request::forward($redirect, true);
 	}
@@ -221,10 +308,22 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 					Minz_Request::paramString('rule_id'),
 					Minz_Request::paramBoolean('enabled')
 				);
-				Minz_Request::good(_t('ext.auto_label.messages.rule_updated'), $redirect);
+				$message = _t('ext.auto_label.messages.rule_updated');
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(true, $message, 'rules', ['rules', 'tools_selects']);
+					return;
+				}
+				Minz_Request::good($message, $redirect);
 			} catch (Throwable $throwable) {
+				if ($this->isAjaxRequest()) {
+					$this->renderActionJson(false, $throwable->getMessage(), 'rules');
+					return;
+				}
 				Minz_Request::bad($throwable->getMessage(), $redirect);
 			}
+		} elseif ($this->isAjaxRequest()) {
+			$this->renderActionJson(false, 'Invalid request.', 'rules');
+			return;
 		}
 		Minz_Request::forward($redirect, true);
 	}
@@ -233,12 +332,20 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'tools');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
 
 		$rule = $this->extension->userRules()->find(Minz_Request::paramString('rule_id'));
 		if ($rule === null) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, _t('ext.auto_label.messages.unknown_rule'), 'tools');
+				return;
+			}
 			Minz_Request::bad(_t('ext.auto_label.messages.unknown_rule'), $redirect);
 			Minz_Request::forward($redirect, true);
 			return;
@@ -266,8 +373,20 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 			]);
 
 			$matched = count($result['tags']) > 0 ? implode(', ', $result['tags']) : _t('ext.auto_label.misc.none');
-			Minz_Request::good(_t('ext.auto_label.messages.dry_run_done', $matched), $redirect);
+			$message = _t('ext.auto_label.messages.dry_run_done', $matched);
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(true, $message, 'tools', ['diagnostics'], [
+					'matched' => $matched,
+					'result' => $result,
+				]);
+				return;
+			}
+			Minz_Request::good($message, $redirect);
 		} catch (Throwable $throwable) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, $throwable->getMessage(), 'tools');
+				return;
+			}
 			Minz_Request::bad($throwable->getMessage(), $redirect);
 		}
 
@@ -278,6 +397,10 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'tools');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
@@ -289,11 +412,19 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 				(int)Minz_Request::paramString('lookback_days'),
 				(int)Minz_Request::paramString('max_entries')
 			);
-			Minz_Request::good(
-				_t('ext.auto_label.messages.backfill_queued', (int)($job['state']['limit'] ?? 0)),
-				$redirect
-			);
+			$message = _t('ext.auto_label.messages.backfill_queued', (int)($job['state']['limit'] ?? 0));
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(true, $message, 'tools', ['tools_queue'], [
+					'snapshot' => $this->extension->queueStore()->snapshot(),
+				]);
+				return;
+			}
+			Minz_Request::good($message, $redirect);
 		} catch (Throwable $throwable) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, $throwable->getMessage(), 'tools');
+				return;
+			}
 			Minz_Request::bad($throwable->getMessage(), $redirect);
 		}
 
@@ -304,12 +435,23 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'tools');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
 
 		$this->extension->queueStore()->clear();
-		Minz_Request::good(_t('ext.auto_label.messages.queue_cleared'), $redirect);
+		$message = _t('ext.auto_label.messages.queue_cleared');
+		if ($this->isAjaxRequest()) {
+			$this->renderActionJson(true, $message, 'tools', ['tools_queue'], [
+				'snapshot' => $this->extension->queueStore()->snapshot(),
+			]);
+			return;
+		}
+		Minz_Request::good($message, $redirect);
 		Minz_Request::forward($redirect, true);
 	}
 
@@ -317,12 +459,21 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'diagnostics');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
 
 		$this->extension->setDiagnosticsEnabled(Minz_Request::paramBoolean('diagnostics_enabled'));
-		Minz_Request::good(_t('ext.auto_label.messages.diagnostics_updated'), $redirect);
+		$message = _t('ext.auto_label.messages.diagnostics_updated');
+		if ($this->isAjaxRequest()) {
+			$this->renderActionJson(true, $message, 'diagnostics', ['diagnostics']);
+			return;
+		}
+		Minz_Request::good($message, $redirect);
 		Minz_Request::forward($redirect, true);
 	}
 
@@ -330,12 +481,21 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
 		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'diagnostics');
+				return;
+			}
 			Minz_Request::forward($redirect, true);
 			return;
 		}
 
 		$this->extension->diagnostics()->clear();
-		Minz_Request::good(_t('ext.auto_label.messages.diagnostics_cleared'), $redirect);
+		$message = _t('ext.auto_label.messages.diagnostics_cleared');
+		if ($this->isAjaxRequest()) {
+			$this->renderActionJson(true, $message, 'diagnostics', ['diagnostics']);
+			return;
+		}
+		Minz_Request::good($message, $redirect);
 		Minz_Request::forward($redirect, true);
 	}
 
@@ -754,6 +914,20 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 			'json' => (string)json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
 		]);
 		$this->view()->_path('autolabel/json.phtml');
+	}
+
+	/**
+	 * @param list<string> $refreshPanels
+	 * @param array<string,mixed> $extra
+	 */
+	private function renderActionJson(bool $ok, string $message, string $tab, array $refreshPanels = [], array $extra = []): void {
+		$this->renderJson(array_merge([
+			'ok' => $ok,
+			'message' => $message,
+			'tab' => $tab,
+			'refresh_panels' => $refreshPanels,
+			'refresh_url' => _url('autolabel', 'index'),
+		], $extra));
 	}
 
 	private function isValidQueueCronToken(string $token): bool {

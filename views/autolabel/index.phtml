@@ -100,6 +100,8 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 		<?php endforeach; ?>
 	</nav>
 
+	<div class="autolabel-feedback" data-autolabel-feedback role="status" hidden></div>
+
 	<?php if ($canAdmin): ?>
 	<section id="autolabel-profiles" class="autolabel-section autolabel-tab-panel" data-autolabel-panel="profiles" role="tabpanel" aria-labelledby="autolabel-tab-profiles">
 		<div class="autolabel-section__heading">
@@ -240,7 +242,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 					<div class="autolabel-actions">
 						<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.profile.actions.save') ?></button>
 						<?php if (($profileForm['id'] ?? '') !== ''): ?>
-							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-profiles"><?= _t('ext.auto_label.misc.cancel') ?></a>
+							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-profiles" data-autolabel-panel-link="profiles"><?= _t('ext.auto_label.misc.cancel') ?></a>
 						<?php endif; ?>
 					</div>
 				</form>
@@ -268,7 +270,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 									<p><?= _t('ext.auto_label.profile.fields.embedding_num_ctx') ?>: <?= $escape((string)($profile['embedding_num_ctx'] ?? 0)) ?></p>
 								<?php endif; ?>
 								<div class="autolabel-inline-actions">
-									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_profile', $profile['id']) ?>#autolabel-profiles"><?= _t('ext.auto_label.misc.edit') ?></a>
+									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_profile', $profile['id']) ?>#autolabel-profiles" data-autolabel-panel-link="profiles"><?= _t('ext.auto_label.misc.edit') ?></a>
 									<form method="post" action="<?= _url('autolabel', 'toggleProfile') ?>">
 										<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 										<input type="hidden" name="profile_id" value="<?= $escape($profile['id']) ?>" />
@@ -400,7 +402,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 					<div class="autolabel-actions">
 						<button class="btn btn--primary" type="submit" <?= count($availableTags) === 0 ? 'disabled' : '' ?>><?= _t('ext.auto_label.rule.actions.save') ?></button>
 						<?php if (($ruleForm['id'] ?? '') !== ''): ?>
-							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-rules"><?= _t('ext.auto_label.misc.cancel') ?></a>
+							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-rules" data-autolabel-panel-link="rules"><?= _t('ext.auto_label.misc.cancel') ?></a>
 						<?php endif; ?>
 					</div>
 				</form>
@@ -433,7 +435,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 									<p><span class="badge badge--muted"><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span></p>
 								<?php endif; ?>
 								<div class="autolabel-inline-actions">
-									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_rule', $rule['id']) ?>#autolabel-rules"><?= _t('ext.auto_label.misc.edit') ?></a>
+									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_rule', $rule['id']) ?>#autolabel-rules" data-autolabel-panel-link="rules"><?= _t('ext.auto_label.misc.edit') ?></a>
 									<form method="post" action="<?= _url('autolabel', 'toggleRule') ?>">
 										<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 										<input type="hidden" name="rule_id" value="<?= $escape($rule['id']) ?>" />

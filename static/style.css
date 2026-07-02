@@ -167,6 +167,19 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
   display: none;
 }
 
+.autolabel-feedback {
+  border: 1px solid rgba(32, 119, 181, 0.28);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  background: rgba(32, 119, 181, 0.08);
+  color: var(--autolabel-text);
+}
+
+.autolabel-feedback--error {
+  border-color: rgba(198, 60, 60, 0.36);
+  background: rgba(198, 60, 60, 0.1);
+}
+
 .autolabel-section__heading h2,
 .autolabel-card h2,
 .autolabel-card h3 {
