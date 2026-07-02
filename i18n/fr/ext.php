@@ -82,6 +82,7 @@ return [
 				'profile' => 'Profil',
 				'mode' => 'Mode',
 				'enabled' => 'Activé',
+				'mark_read_on_match' => 'Marquer comme lu si la règle correspond',
 				'llm_prompt' => 'Prompt',
 				'embedding_anchor_texts' => 'Textes d’ancrage (une ligne par texte)',
 				'embedding_threshold' => 'Seuil de similarité',
@@ -90,6 +91,7 @@ return [
 			'help' => [
 				'prompt_placeholders' => 'Variables de prompt : {{label}}, {{title}}, {{content}}, {{feed}}, {{authors}}, {{url}}.',
 				'target_tags' => 'Sélectionnez un ou plusieurs tags FreshRSS existants. Créez d’abord les tags manquants dans la gestion des tags de FreshRSS, puis revenez ici pour les lier.',
+				'mark_read_on_match' => 'Lorsqu’une règle correspond, AutoLabel marque l’article comme lu après avoir appliqué ses tags.',
 				'no_tags' => 'Aucun tag FreshRSS n’est encore disponible. Veuillez d’abord créer des tags dans FreshRSS.',
 				'manage_tags' => 'Ouvrir la gestion des tags FreshRSS',
 			],

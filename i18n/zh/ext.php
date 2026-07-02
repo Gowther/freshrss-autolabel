@@ -82,6 +82,7 @@ return [
 				'profile' => '模型档案',
 				'mode' => '模式',
 				'enabled' => '启用',
+				'mark_read_on_match' => '命中后标为已读',
 				'llm_prompt' => 'Prompt',
 				'embedding_anchor_texts' => '锚定文本（每行一条）',
 				'embedding_threshold' => '相似度阈值',
@@ -90,6 +91,7 @@ return [
 			'help' => [
 				'prompt_placeholders' => 'Prompt 占位符：{{label}}、{{title}}、{{content}}、{{feed}}、{{authors}}、{{url}}。',
 				'target_tags' => '请选择一个或多个已存在的 FreshRSS 标签。若缺少标签，请先到 FreshRSS 标签管理中创建，再回到这里绑定。',
+				'mark_read_on_match' => '规则命中时，AutoLabel 会在添加标签后把文章标记为已读。',
 				'no_tags' => '当前还没有可用的 FreshRSS 标签，请先在 FreshRSS 中创建标签。',
 				'manage_tags' => '打开 FreshRSS 标签管理',
 			],

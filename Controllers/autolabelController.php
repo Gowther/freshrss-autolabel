@@ -186,6 +186,7 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 				'name' => Minz_Request::paramString('name'),
 				'enabled' => Minz_Request::paramBoolean('enabled'),
 				'target_tags' => $this->requestTargetTags(),
+				'mark_read_on_match' => Minz_Request::paramBoolean('mark_read_on_match'),
 				'profile_id' => Minz_Request::paramString('profile_id'),
 				'mode' => Minz_Request::paramString('mode'),
 				'llm_prompt' => Minz_Request::paramString('llm_prompt'),

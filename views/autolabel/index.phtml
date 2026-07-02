@@ -337,6 +337,12 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 						<span><?= _t('ext.auto_label.rule.fields.enabled') ?></span>
 					</label>
 
+					<label class="checkbox">
+						<input type="checkbox" name="mark_read_on_match" value="1" <?= !empty($ruleForm['mark_read_on_match']) ? 'checked' : '' ?> />
+						<span><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span>
+					</label>
+					<p class="autolabel-help"><?= _t('ext.auto_label.rule.help.mark_read_on_match') ?></p>
+
 					<div data-autolabel-mode-panel="llm">
 						<label>
 							<span><?= _t('ext.auto_label.rule.fields.llm_prompt') ?></span>
@@ -396,6 +402,9 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 										(<?= _t('ext.auto_label.misc.disabled') ?>)
 									<?php endif; ?>
 								</p>
+								<?php if (!empty($rule['mark_read_on_match'])): ?>
+									<p><span class="badge badge--muted"><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span></p>
+								<?php endif; ?>
 								<div class="autolabel-inline-actions">
 									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_rule', $rule['id']) ?>"><?= _t('ext.auto_label.misc.edit') ?></a>
 									<form method="post" action="<?= _url('autolabel', 'toggleRule') ?>">

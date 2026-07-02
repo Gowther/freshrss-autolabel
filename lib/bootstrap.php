@@ -459,6 +459,7 @@ final class AutoLabelUserRuleRepository {
 			'name' => '',
 			'enabled' => true,
 			'target_tags' => [],
+			'mark_read_on_match' => false,
 			'profile_id' => '',
 			'mode' => 'llm',
 			'llm_prompt' => '',
@@ -527,6 +528,7 @@ final class AutoLabelUserRuleRepository {
 		$rule['target_tags'] = $this->normalizeTargetTags(
 			$rule['target_tags'] ?? ($rule['target_tag'] ?? [])
 		);
+		$rule['mark_read_on_match'] = (bool)$rule['mark_read_on_match'];
 		$rule['profile_id'] = trim((string)$rule['profile_id']);
 		$rule['mode'] = $rule['mode'] === 'embedding' ? 'embedding' : 'llm';
 		$rule['llm_prompt'] = trim((string)$rule['llm_prompt']);
@@ -2306,7 +2308,7 @@ final class AutoLabelEngine {
 	/**
 	 * @param array<string,mixed> $profile
 	 * @param list<array{task_id:string,entry:FreshRSS_Entry,rules:list<array<string,mixed>>}> $tasks
-	 * @return array<string,array{tags:list<string>,results:list<array<string,mixed>>,context:array<string,string>,failed_rule_ids:list<string>,transport:string}>
+	 * @return array<string,array{tags:list<string>,mark_read:bool,results:list<array<string,mixed>>,context:array<string,string>,failed_rule_ids:list<string>,transport:string}>
 	 */
 	public function runProfileBatch(array $profile, array $tasks): array {
 		if (count($tasks) === 0) {
@@ -2332,7 +2334,7 @@ final class AutoLabelEngine {
 	 * @param array<string,mixed> $profile
 	 * @param list<array{task_id:string,entry:FreshRSS_Entry,rules:list<array<string,mixed>>}> $tasks
 	 * @param array<string,array<string,string>> $contextsByTask
-	 * @return array<string,array{tags:list<string>,results:list<array<string,mixed>>,context:array<string,string>,failed_rule_ids:list<string>,transport:string}>
+	 * @return array<string,array{tags:list<string>,mark_read:bool,results:list<array<string,mixed>>,context:array<string,string>,failed_rule_ids:list<string>,transport:string}>
 	 */
 	private function runLlmProfileBatch(array $profile, array $tasks, array $contextsByTask): array {
 		$provider = $this->providers->create((string)$profile['provider']);
@@ -2341,6 +2343,7 @@ final class AutoLabelEngine {
 			$taskId = (string)$task['task_id'];
 			$resultsByTask[$taskId] = [
 				'tags' => [],
+				'mark_read' => false,
 				'results' => [],
 				'context' => $this->diagnosticContext($contextsByTask[$taskId]),
 				'failed_rule_ids' => [],
@@ -2415,6 +2418,9 @@ final class AutoLabelEngine {
 						: null,
 				];
 				if ($matched) {
+					if (!empty($rule['mark_read_on_match'])) {
+						$resultsByTask[$taskId]['mark_read'] = true;
+					}
 					foreach ($rule['target_tags'] as $targetTag) {
 						$resultsByTask[$taskId]['tags'][] = (string)$targetTag;
 					}
@@ -2432,7 +2438,7 @@ final class AutoLabelEngine {
 	 * @param array<string,mixed> $profile
 	 * @param list<array{task_id:string,entry:FreshRSS_Entry,rules:list<array<string,mixed>>}> $tasks
 	 * @param array<string,array<string,string>> $contextsByTask
-	 * @return array<string,array{tags:list<string>,results:list<array<string,mixed>>,context:array<string,string>,failed_rule_ids:list<string>,transport:string}>
+	 * @return array<string,array{tags:list<string>,mark_read:bool,results:list<array<string,mixed>>,context:array<string,string>,failed_rule_ids:list<string>,transport:string}>
 	 */
 	private function runEmbeddingProfileBatch(array $profile, array $tasks, array $contextsByTask): array {
 		$provider = $this->providers->create((string)$profile['provider']);
@@ -2444,6 +2450,7 @@ final class AutoLabelEngine {
 			$taskId = (string)$task['task_id'];
 			$aggregates[$taskId] = [
 				'tags' => [],
+				'mark_read' => false,
 				'results' => [],
 				'context' => $this->diagnosticContext($contextsByTask[$taskId]),
 				'failed_rule_ids' => [],
@@ -2575,6 +2582,9 @@ final class AutoLabelEngine {
 						'threshold' => $threshold,
 					];
 					if ($matched) {
+						if (!empty($rule['mark_read_on_match'])) {
+							$aggregates[$taskId]['mark_read'] = true;
+						}
 						foreach ($rule['target_tags'] as $targetTag) {
 							$aggregates[$taskId]['tags'][] = (string)$targetTag;
 						}
@@ -2593,12 +2603,13 @@ final class AutoLabelEngine {
 
 	/**
 	 * @param list<array<string,mixed>>|null $rules
-	 * @return array{tags:list<string>,results:list<array<string,mixed>>,context:array<string,string>}
+	 * @return array{tags:list<string>,mark_read:bool,results:list<array<string,mixed>>,context:array<string,string>}
 	 */
 	public function runRules(FreshRSS_Entry $entry, ?array $rules = null, bool $logDiagnostics = true): array {
 		$rules = $rules ?? $this->rules->enabled();
 		$results = [];
 		$tags = is_array($entry->tags(false)) ? $entry->tags(false) : [];
+		$markRead = false;
 		$profilesById = [];
 		foreach ($this->profiles->all() as $profile) {
 			$profilesById[$profile['id']] = $profile;
@@ -2652,6 +2663,7 @@ final class AutoLabelEngine {
 			}
 
 			if (!empty($result['matched'])) {
+				$markRead = $markRead || !empty($rule['mark_read_on_match']);
 				foreach ($rule['target_tags'] as $targetTag) {
 					$tags[] = (string)$targetTag;
 				}
@@ -2670,8 +2682,9 @@ final class AutoLabelEngine {
 				'entry' => $entry,
 				'rules' => $profileRules,
 			]]);
-			$entryResult = $batchResults['0'] ?? ['tags' => [], 'results' => []];
+			$entryResult = $batchResults['0'] ?? ['tags' => [], 'mark_read' => false, 'results' => []];
 			$tags = array_merge($tags, is_array($entryResult['tags'] ?? null) ? $entryResult['tags'] : []);
+			$markRead = $markRead || !empty($entryResult['mark_read']);
 			$results = array_merge($results, is_array($entryResult['results'] ?? null) ? $entryResult['results'] : []);
 		}
 
@@ -2686,11 +2699,13 @@ final class AutoLabelEngine {
 				'title' => $entry->title(),
 				'results' => $results,
 				'tags' => $tags,
+				'mark_read' => $markRead,
 			]);
 		}
 
 		return [
 			'tags' => $tags,
+			'mark_read' => $markRead,
 			'results' => $results,
 			'context' => $this->diagnosticContext(
 				$contextsByMaxChars[AutoLabelSystemProfileRepository::DEFAULT_CONTENT_MAX_CHARS]
@@ -3114,9 +3129,9 @@ final class AutoLabelEntryPersistence {
 	private static array $tagIdsByName = [];
 
 	/**
-	 * @return array{updated:bool,applied_tags:list<string>,failed_tags:list<string>}
+	 * @return array{updated:bool,applied_tags:list<string>,failed_tags:list<string>,marked_read:bool,failed_read:bool}
 	 */
-	public static function updateTags($entryDao, FreshRSS_Entry $entry, array $tags): array {
+	public static function updateTags($entryDao, FreshRSS_Entry $entry, array $tags, bool $markRead = false): array {
 		$tags = self::normalizeTags($tags);
 		$existingTags = self::normalizeTags(is_array($entry->tags(false)) ? $entry->tags(false) : []);
 		$newTags = array_values(array_filter(
@@ -3127,55 +3142,75 @@ final class AutoLabelEntryPersistence {
 		$newlyAppliedTags = $resolvedTags['applied_tags'];
 		$appliedTags = array_values(array_unique(array_merge($existingTags, $newlyAppliedTags)));
 		$failedTags = $resolvedTags['failed_tags'];
-		if (count($newlyAppliedTags) === 0) {
+		$shouldWriteTags = count($newlyAppliedTags) > 0;
+		$shouldMarkRead = $markRead && !$entry->isRead();
+		if (!$shouldWriteTags && !$shouldMarkRead) {
 			return [
 				'updated' => false,
 				'applied_tags' => [],
 				'failed_tags' => $failedTags,
+				'marked_read' => false,
+				'failed_read' => false,
 			];
 		}
 
-		$updated = AutoLabelQueueUpdateGuard::withoutQueueing(static function () use ($entryDao, $entry, $appliedTags, $newlyAppliedTags): bool {
-			$entry->_tags($appliedTags);
-			$payload = [
-				'id' => $entry->id(),
-				'guid' => $entry->guid(),
-				'title' => $entry->title(),
-				'author' => method_exists($entry, 'authors') ? (string)$entry->authors(true) : $entry->author(),
-				'content' => $entry->content(false),
-				'link' => $entry->link(true),
-				'date' => (int)$entry->date(true),
-				'lastSeen' => method_exists($entry, 'lastSeen') ? $entry->lastSeen() : 0,
-				'lastModified' => method_exists($entry, 'lastModified') ? $entry->lastModified() : 0,
-				'lastUserModified' => method_exists($entry, 'lastUserModified') ? $entry->lastUserModified() : 0,
-				'hash' => $entry->hash(),
-				'is_read' => $entry->isRead(),
-				'is_favorite' => $entry->isFavorite(),
-				'id_feed' => $entry->feedId(),
-				'tags' => (string)$entry->tags(true),
-				'attributes' => method_exists($entry, 'attributes') ? $entry->attributes() : [],
-			];
+		$tagsUpdated = false;
+		if ($shouldWriteTags) {
+			$tagsUpdated = AutoLabelQueueUpdateGuard::withoutQueueing(static function () use ($entryDao, $entry, $existingTags, $appliedTags, $newlyAppliedTags): bool {
+				$entry->_tags($appliedTags);
+				$payload = [
+					'id' => $entry->id(),
+					'guid' => $entry->guid(),
+					'title' => $entry->title(),
+					'author' => method_exists($entry, 'authors') ? (string)$entry->authors(true) : $entry->author(),
+					'content' => $entry->content(false),
+					'link' => $entry->link(true),
+					'date' => (int)$entry->date(true),
+					'lastSeen' => method_exists($entry, 'lastSeen') ? $entry->lastSeen() : 0,
+					'lastModified' => method_exists($entry, 'lastModified') ? $entry->lastModified() : 0,
+					'lastUserModified' => method_exists($entry, 'lastUserModified') ? $entry->lastUserModified() : 0,
+					'hash' => $entry->hash(),
+					'is_read' => $entry->isRead(),
+					'is_favorite' => $entry->isFavorite(),
+					'id_feed' => $entry->feedId(),
+					'tags' => (string)$entry->tags(true),
+					'attributes' => method_exists($entry, 'attributes') ? $entry->attributes() : [],
+				];
 
-			if (!(bool)$entryDao->updateEntry($payload)) {
-				return false;
-			}
+				if (!(bool)$entryDao->updateEntry($payload)) {
+					$entry->_tags($existingTags);
+					return false;
+				}
 
-			self::ensureEntryTagLinks($entry, $newlyAppliedTags);
-			return true;
-		});
+				self::ensureEntryTagLinks($entry, $newlyAppliedTags);
+				return true;
+			});
+		}
 
-		if (!$updated) {
-			return [
-				'updated' => false,
-				'applied_tags' => $appliedTags,
-				'failed_tags' => $failedTags,
-			];
+		$markedRead = false;
+		if ($shouldMarkRead) {
+			$markedRead = AutoLabelQueueUpdateGuard::withoutQueueing(static function () use ($entryDao, $entry): bool {
+				if (!method_exists($entryDao, 'markRead')) {
+					return false;
+				}
+
+				$affected = $entryDao->markRead((string)$entry->id(), true);
+				if ($affected === false || (int)$affected <= 0) {
+					return false;
+				}
+				if (method_exists($entry, '_isRead')) {
+					$entry->_isRead(true);
+				}
+				return true;
+			});
 		}
 
 		return [
-			'updated' => true,
-			'applied_tags' => $appliedTags,
+			'updated' => $tagsUpdated || $markedRead,
+			'applied_tags' => $tagsUpdated ? $appliedTags : ($markedRead ? $existingTags : []),
 			'failed_tags' => $failedTags,
+			'marked_read' => $markedRead,
+			'failed_read' => $shouldMarkRead && !$markedRead,
 		];
 	}
 
@@ -3591,6 +3626,7 @@ final class AutoLabelBackfillService {
 		foreach ($selected as $index => $candidate) {
 			$resultsByEntry[$index] = [
 				'tags' => is_array($candidate['entry']->tags(false)) ? $candidate['entry']->tags(false) : [],
+				'mark_read' => false,
 				'results' => [],
 				'failed_rule_ids' => [],
 				'failed_tags' => [],
@@ -3628,11 +3664,13 @@ final class AutoLabelBackfillService {
 				$taskId = (string)$task['task_id'];
 				$result = $batchResults[$taskId] ?? [
 					'tags' => [],
+					'mark_read' => false,
 					'results' => [],
 					'failed_rule_ids' => array_values(array_map(static fn (array $rule): string => (string)$rule['id'], $task['rules'])),
 					'transport' => 'concurrent',
 				];
 				$resultsByEntry[(int)$taskId]['tags'] = array_values(array_unique(array_merge($resultsByEntry[(int)$taskId]['tags'], $result['tags'] ?? [])));
+				$resultsByEntry[(int)$taskId]['mark_read'] = !empty($resultsByEntry[(int)$taskId]['mark_read']) || !empty($result['mark_read']);
 				$resultsByEntry[(int)$taskId]['results'] = array_merge($resultsByEntry[(int)$taskId]['results'], $result['results'] ?? []);
 				$resultsByEntry[(int)$taskId]['failed_rule_ids'] = array_values(array_unique(array_merge($resultsByEntry[(int)$taskId]['failed_rule_ids'], $result['failed_rule_ids'] ?? [])));
 				$resultsByEntry[(int)$taskId]['transport'] = (string)($result['transport'] ?? 'concurrent');
@@ -3682,9 +3720,10 @@ final class AutoLabelBackfillService {
 			$entry = $candidate['entry'];
 			$entryResult = $resultsByEntry[$index];
 			$beforeTags = is_array($entry->tags(false)) ? $entry->tags(false) : [];
-			$persist = ['updated' => false, 'applied_tags' => [], 'failed_tags' => []];
-			if (count($entryResult['tags']) > count($beforeTags)) {
-				$persist = AutoLabelEntryPersistence::updateTags($entryDao, $entry, $entryResult['tags']);
+			$persist = ['updated' => false, 'applied_tags' => [], 'failed_tags' => [], 'marked_read' => false, 'failed_read' => false];
+			$shouldMarkRead = !empty($entryResult['mark_read']) && !$entry->isRead();
+			if (count($entryResult['tags']) > count($beforeTags) || $shouldMarkRead) {
+				$persist = AutoLabelEntryPersistence::updateTags($entryDao, $entry, $entryResult['tags'], !empty($entryResult['mark_read']));
 				if (!empty($persist['updated'])) {
 					++$updated;
 					$matchedTags += max(0, count($persist['applied_tags']) - count($beforeTags));
@@ -3696,11 +3735,14 @@ final class AutoLabelBackfillService {
 				'entry_title' => $entry->title(),
 				'result' => [
 					'tags' => $entryResult['tags'],
+					'mark_read' => !empty($entryResult['mark_read']),
 					'results' => $entryResult['results'],
 					'transport' => $entryResult['transport'] ?? 'concurrent',
 				],
 				'updated' => !empty($persist['updated']),
 				'failed_tags' => is_array($persist['failed_tags'] ?? null) ? $persist['failed_tags'] : [],
+				'marked_read' => !empty($persist['marked_read']),
+				'failed_read' => !empty($persist['failed_read']),
 			]);
 
 			$deferredRuleIds = is_array($candidate['deferred_rule_ids'] ?? null) ? $candidate['deferred_rule_ids'] : [];
@@ -4209,6 +4251,7 @@ final class AutoLabelQueueProcessor {
 		foreach ($selectedStates as $index => $state) {
 			$aggregates[$index] = [
 				'tags' => $state['before_tags'],
+				'mark_read' => false,
 				'results' => [],
 				'failed_rule_ids' => [],
 			];
@@ -4244,8 +4287,9 @@ final class AutoLabelQueueProcessor {
 			$fallbackEntries = 0;
 			foreach ($tasks as $task) {
 				$taskId = (int)$task['task_id'];
-				$result = $batchResults[(string)$taskId] ?? ['tags' => [], 'results' => [], 'failed_rule_ids' => [], 'transport' => 'concurrent'];
+				$result = $batchResults[(string)$taskId] ?? ['tags' => [], 'mark_read' => false, 'results' => [], 'failed_rule_ids' => [], 'transport' => 'concurrent'];
 				$aggregates[$taskId]['tags'] = array_values(array_unique(array_merge($aggregates[$taskId]['tags'], $result['tags'] ?? [])));
+				$aggregates[$taskId]['mark_read'] = !empty($aggregates[$taskId]['mark_read']) || !empty($result['mark_read']);
 				$aggregates[$taskId]['results'] = array_merge($aggregates[$taskId]['results'], $result['results'] ?? []);
 				$aggregates[$taskId]['failed_rule_ids'] = array_values(array_unique(array_merge($aggregates[$taskId]['failed_rule_ids'], $result['failed_rule_ids'] ?? [])));
 				$aggregates[$taskId]['transport'] = (string)($result['transport'] ?? 'concurrent');
@@ -4283,9 +4327,10 @@ final class AutoLabelQueueProcessor {
 		$retryQueue = [];
 		foreach ($selectedStates as $index => $state) {
 			$aggregate = $aggregates[$index];
-			$persist = ['updated' => false, 'applied_tags' => [], 'failed_tags' => []];
-			if (count($aggregate['tags']) > count($state['before_tags'])) {
-				$persist = AutoLabelEntryPersistence::updateTags($entryDao, $state['entry'], $aggregate['tags']);
+			$persist = ['updated' => false, 'applied_tags' => [], 'failed_tags' => [], 'marked_read' => false, 'failed_read' => false];
+			$shouldMarkRead = !empty($aggregate['mark_read']) && !$state['entry']->isRead();
+			if (count($aggregate['tags']) > count($state['before_tags']) || $shouldMarkRead) {
+				$persist = AutoLabelEntryPersistence::updateTags($entryDao, $state['entry'], $aggregate['tags'], !empty($aggregate['mark_read']));
 				if (!empty($persist['updated'])) {
 					$stats['updated_entries']++;
 					$stats['matched_tags'] += max(0, count($persist['applied_tags']) - count($state['before_tags']));
@@ -4297,11 +4342,14 @@ final class AutoLabelQueueProcessor {
 				'entry_title' => $state['entry']->title(),
 				'result' => [
 					'tags' => $aggregate['tags'],
+					'mark_read' => !empty($aggregate['mark_read']),
 					'results' => $aggregate['results'],
 					'transport' => $aggregate['transport'] ?? 'concurrent',
 				],
 				'updated' => !empty($persist['updated']),
 				'failed_tags' => $persist['failed_tags'] ?? [],
+				'marked_read' => !empty($persist['marked_read']),
+				'failed_read' => !empty($persist['failed_read']),
 			]);
 
 			$stats['processed_items']++;
@@ -4448,10 +4496,15 @@ final class AutoLabelQueueProcessor {
 		$updatedEntries = 0;
 		$matchedTags = 0;
 		$failedTags = [];
-		if (count($afterTags) > count($beforeTags)) {
+		$markedRead = false;
+		$failedRead = false;
+		$shouldMarkRead = !empty($result['mark_read']) && !$entry->isRead();
+		if (count($afterTags) > count($beforeTags) || $shouldMarkRead) {
 			$entryDao = FreshRSS_Factory::createEntryDao();
-			$persist = AutoLabelEntryPersistence::updateTags($entryDao, $entry, $afterTags);
+			$persist = AutoLabelEntryPersistence::updateTags($entryDao, $entry, $afterTags, !empty($result['mark_read']));
 			$failedTags = $persist['failed_tags'];
+			$markedRead = !empty($persist['marked_read']);
+			$failedRead = !empty($persist['failed_read']);
 			if ($persist['updated']) {
 				$updatedEntries = 1;
 				$matchedTags = max(0, count($persist['applied_tags']) - count($beforeTags));
@@ -4464,6 +4517,8 @@ final class AutoLabelQueueProcessor {
 			'result' => $result,
 			'updated' => $updatedEntries === 1,
 			'failed_tags' => $failedTags,
+			'marked_read' => $markedRead,
+			'failed_read' => $failedRead,
 		]);
 
 		return [

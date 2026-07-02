@@ -82,6 +82,7 @@ return [
 					'profile' => 'Profile',
 					'mode' => 'Mode',
 					'enabled' => 'Enabled',
+					'mark_read_on_match' => 'Mark read on match',
 					'llm_prompt' => 'Prompt',
 					'embedding_anchor_texts' => 'Anchor texts (one per line)',
 					'embedding_threshold' => 'Similarity threshold',
@@ -90,6 +91,7 @@ return [
 				'help' => [
 					'prompt_placeholders' => 'Prompt placeholders: {{label}}, {{title}}, {{content}}, {{feed}}, {{authors}}, {{url}}.',
 					'target_tags' => 'Select one or more existing FreshRSS tags. Create missing tags first in FreshRSS tag management, then come back here to bind them.',
+					'mark_read_on_match' => 'When a rule matches, AutoLabel marks the article as read after applying its tags.',
 					'no_tags' => 'No FreshRSS tags are available yet. Please create tags in FreshRSS first.',
 					'manage_tags' => 'Open FreshRSS tag management',
 				],
