@@ -53,9 +53,22 @@ $diagnosticModeLabel = static function (string $mode): string {
 };
 $authorBlogUrl = 'https://1q43.blog';
 $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
+$dashboardTabs = [];
+if ($canAdmin) {
+	$dashboardTabs[] = ['id' => 'profiles', 'label' => _t('ext.auto_label.profile.title')];
+}
+$dashboardTabs[] = ['id' => 'rules', 'label' => _t('ext.auto_label.rule.title')];
+$dashboardTabs[] = ['id' => 'tools', 'label' => _t('ext.auto_label.tools.title')];
+$dashboardTabs[] = ['id' => 'diagnostics', 'label' => _t('ext.auto_label.diagnostics.title')];
+$defaultDashboardTab = $canAdmin ? 'profiles' : 'rules';
+if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
+	$defaultDashboardTab = 'profiles';
+} elseif (($ruleForm['id'] ?? '') !== '') {
+	$defaultDashboardTab = 'rules';
+}
 ?>
 
-<main class="autolabel-page">
+<main class="autolabel-page" data-autolabel-default-tab="<?= $escape($defaultDashboardTab) ?>">
 	<header class="autolabel-hero">
 		<div>
 			<h1><?= _t('ext.auto_label.dashboard.title') ?></h1>
@@ -73,8 +86,22 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 		</div>
 	</header>
 
+	<nav class="autolabel-tabs" data-autolabel-tabs role="tablist" aria-label="<?= $escape(_t('ext.auto_label.dashboard.title')) ?>">
+		<?php foreach ($dashboardTabs as $dashboardTab): ?>
+			<a
+				id="autolabel-tab-<?= $escape($dashboardTab['id']) ?>"
+				class="autolabel-tab"
+				href="#autolabel-<?= $escape($dashboardTab['id']) ?>"
+				data-autolabel-tab="<?= $escape($dashboardTab['id']) ?>"
+				role="tab"
+				aria-controls="autolabel-<?= $escape($dashboardTab['id']) ?>"
+				aria-selected="<?= $dashboardTab['id'] === $defaultDashboardTab ? 'true' : 'false' ?>"
+			><?= $escape($dashboardTab['label']) ?></a>
+		<?php endforeach; ?>
+	</nav>
+
 	<?php if ($canAdmin): ?>
-	<section class="autolabel-section">
+	<section id="autolabel-profiles" class="autolabel-section autolabel-tab-panel" data-autolabel-panel="profiles" role="tabpanel" aria-labelledby="autolabel-tab-profiles">
 		<div class="autolabel-section__heading">
 			<h2><?= _t('ext.auto_label.profile.title') ?></h2>
 			<p><?= _t('ext.auto_label.profile.subtitle') ?></p>
@@ -213,7 +240,7 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 					<div class="autolabel-actions">
 						<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.profile.actions.save') ?></button>
 						<?php if (($profileForm['id'] ?? '') !== ''): ?>
-							<a class="btn" href="<?= _url('autolabel', 'index') ?>"><?= _t('ext.auto_label.misc.cancel') ?></a>
+							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-profiles"><?= _t('ext.auto_label.misc.cancel') ?></a>
 						<?php endif; ?>
 					</div>
 				</form>
@@ -241,7 +268,7 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 									<p><?= _t('ext.auto_label.profile.fields.embedding_num_ctx') ?>: <?= $escape((string)($profile['embedding_num_ctx'] ?? 0)) ?></p>
 								<?php endif; ?>
 								<div class="autolabel-inline-actions">
-									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_profile', $profile['id']) ?>"><?= _t('ext.auto_label.misc.edit') ?></a>
+									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_profile', $profile['id']) ?>#autolabel-profiles"><?= _t('ext.auto_label.misc.edit') ?></a>
 									<form method="post" action="<?= _url('autolabel', 'toggleProfile') ?>">
 										<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 										<input type="hidden" name="profile_id" value="<?= $escape($profile['id']) ?>" />
@@ -268,7 +295,7 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 	</section>
 	<?php endif; ?>
 
-	<section class="autolabel-section">
+	<section id="autolabel-rules" class="autolabel-section autolabel-tab-panel" data-autolabel-panel="rules" role="tabpanel" aria-labelledby="autolabel-tab-rules">
 		<div class="autolabel-section__heading">
 			<h2><?= _t('ext.auto_label.rule.title') ?></h2>
 			<p><?= _t('ext.auto_label.rule.subtitle') ?></p>
@@ -373,7 +400,7 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 					<div class="autolabel-actions">
 						<button class="btn btn--primary" type="submit" <?= count($availableTags) === 0 ? 'disabled' : '' ?>><?= _t('ext.auto_label.rule.actions.save') ?></button>
 						<?php if (($ruleForm['id'] ?? '') !== ''): ?>
-							<a class="btn" href="<?= _url('autolabel', 'index') ?>"><?= _t('ext.auto_label.misc.cancel') ?></a>
+							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-rules"><?= _t('ext.auto_label.misc.cancel') ?></a>
 						<?php endif; ?>
 					</div>
 				</form>
@@ -406,7 +433,7 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 									<p><span class="badge badge--muted"><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span></p>
 								<?php endif; ?>
 								<div class="autolabel-inline-actions">
-									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_rule', $rule['id']) ?>"><?= _t('ext.auto_label.misc.edit') ?></a>
+									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_rule', $rule['id']) ?>#autolabel-rules"><?= _t('ext.auto_label.misc.edit') ?></a>
 									<form method="post" action="<?= _url('autolabel', 'toggleRule') ?>">
 										<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 										<input type="hidden" name="rule_id" value="<?= $escape($rule['id']) ?>" />
@@ -427,7 +454,12 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 		</div>
 	</section>
 
-	<section class="autolabel-section">
+	<section id="autolabel-tools" class="autolabel-section autolabel-tab-panel" data-autolabel-panel="tools" role="tabpanel" aria-labelledby="autolabel-tab-tools">
+		<div class="autolabel-section__heading">
+			<h2><?= _t('ext.auto_label.tools.title') ?></h2>
+			<p><?= _t('ext.auto_label.tools.subtitle') ?></p>
+		</div>
+
 		<div class="autolabel-grid">
 			<div class="autolabel-card">
 				<h2><?= _t('ext.auto_label.tools.dry_run') ?></h2>
@@ -549,7 +581,7 @@ $projectGithubUrl = 'https://github.com/Pls-1q43/freshrss-autolabel';
 		</div>
 	</section>
 
-	<section class="autolabel-section">
+	<section id="autolabel-diagnostics" class="autolabel-section autolabel-tab-panel" data-autolabel-panel="diagnostics" role="tabpanel" aria-labelledby="autolabel-tab-diagnostics">
 		<div class="autolabel-section__heading">
 			<h2><?= _t('ext.auto_label.diagnostics.title') ?></h2>
 			<p><?= _t('ext.auto_label.diagnostics.subtitle') ?></p>

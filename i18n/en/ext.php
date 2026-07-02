@@ -97,6 +97,8 @@ return [
 				],
 			],
 			'tools' => [
+				'title' => 'Run tools',
+				'subtitle' => 'Dry run, backfill, and queue controls in one place.',
 				'dry_run' => 'Dry run',
 				'backfill' => 'Backfill',
 				'run' => 'Run dry run',

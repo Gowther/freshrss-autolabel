@@ -1,7 +1,97 @@
-window.__AutoLabelScriptVersion = '0.5.0-endpoint-url-v5';
+window.__AutoLabelScriptVersion = '0.5.3-tabs-v1';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {
+  const tabsRoot = document.querySelector('[data-autolabel-tabs]');
+  if (tabsRoot) {
+    const page = document.querySelector('[data-autolabel-default-tab]');
+    const tabs = Array.from(tabsRoot.querySelectorAll('[data-autolabel-tab]'));
+    const panels = Array.from(document.querySelectorAll('[data-autolabel-panel]'));
+    const knownTabs = new Set(tabs.map((tab) => tab.dataset.autolabelTab).filter(Boolean));
+    const defaultTab = knownTabs.has(page?.dataset.autolabelDefaultTab ?? '')
+      ? page.dataset.autolabelDefaultTab
+      : (tabs[0]?.dataset.autolabelTab ?? '');
+
+    const normalizeTabId = (hash) => {
+      if (!hash) {
+        return '';
+      }
+
+      const normalizedHash = hash.replace(/^#/, '');
+      let raw = normalizedHash;
+      try {
+        raw = decodeURIComponent(normalizedHash);
+      } catch (error) {
+        raw = normalizedHash;
+      }
+      raw = raw.replace(/^autolabel-/, '');
+      return knownTabs.has(raw) ? raw : '';
+    };
+
+    const activateTab = (tabId, updateHash = false) => {
+      const nextTab = knownTabs.has(tabId) ? tabId : defaultTab;
+      if (nextTab === '') {
+        return;
+      }
+
+      for (const tab of tabs) {
+        const isActive = tab.dataset.autolabelTab === nextTab;
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        tab.setAttribute('tabindex', isActive ? '0' : '-1');
+      }
+
+      for (const panel of panels) {
+        panel.hidden = panel.dataset.autolabelPanel !== nextTab;
+      }
+
+      if (updateHash && window.history?.pushState) {
+        window.history.pushState(null, '', `#autolabel-${nextTab}`);
+      }
+    };
+
+    const focusTabByOffset = (currentTab, offset) => {
+      const currentIndex = tabs.indexOf(currentTab);
+      if (currentIndex === -1 || tabs.length === 0) {
+        return;
+      }
+
+      const nextIndex = (currentIndex + offset + tabs.length) % tabs.length;
+      const nextTab = tabs[nextIndex];
+      activateTab(nextTab.dataset.autolabelTab ?? '', true);
+      nextTab.focus();
+    };
+
+    tabsRoot.dataset.autolabelEnhanced = 'true';
+    for (const tab of tabs) {
+      tab.addEventListener('click', (event) => {
+        event.preventDefault();
+        activateTab(tab.dataset.autolabelTab ?? '', true);
+      });
+      tab.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          focusTabByOffset(tab, 1);
+        } else if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          focusTabByOffset(tab, -1);
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          activateTab(tabs[0]?.dataset.autolabelTab ?? '', true);
+          tabs[0]?.focus();
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          activateTab(tabs[tabs.length - 1]?.dataset.autolabelTab ?? '', true);
+          tabs[tabs.length - 1]?.focus();
+        }
+      });
+    }
+
+    window.addEventListener('hashchange', () => {
+      activateTab(normalizeTabId(window.location.hash) || defaultTab);
+    });
+    activateTab(normalizeTabId(window.location.hash) || defaultTab);
+  }
+
   const findRuleForm = () => document.querySelector('[data-autolabel-rule-form]') || document.querySelector('form[action*="saveRule"]');
 
   const findRuleNameInput = (form) => {

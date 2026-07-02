@@ -97,6 +97,8 @@ return [
 			],
 		],
 		'tools' => [
+			'title' => 'Outils',
+			'subtitle' => 'Tests, backfill et controle de la file au meme endroit.',
 			'dry_run' => 'Test à blanc',
 			'backfill' => 'Remplissage rétroactif',
 			'run' => 'Lancer le test',

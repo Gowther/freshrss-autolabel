@@ -97,6 +97,8 @@ return [
 			],
 		],
 		'tools' => [
+			'title' => '运行工具',
+			'subtitle' => '集中执行试运行、回填和队列处理。',
 			'dry_run' => '试运行',
 			'backfill' => '回填',
 			'run' => '运行试验',
