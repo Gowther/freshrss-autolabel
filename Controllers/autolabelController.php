@@ -48,6 +48,8 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 			'profiles_by_id' => $this->profilesById($profiles),
 			'diagnostics' => $this->extension->diagnostics()->all(),
 			'diagnostics_enabled' => $this->extension->diagnosticsEnabled(),
+			'notification_settings' => $this->extension->notificationSettings()->settings(),
+			'notification_summary' => $this->extension->notificationStore()->summary(),
 			'queue_snapshot' => $this->extension->queueStore()->snapshot(),
 			'queue_concurrency_available' => $this->extension->engine()->supportsConcurrentWindow(),
 			'manual_queue_run' => $this->extension->queueStore()->manualRun(),
@@ -455,6 +457,108 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		Minz_Request::forward($redirect, true);
 	}
 
+	public function saveNotificationsAction(): void {
+		$this->requireUser();
+		$redirect = ['c' => 'autolabel', 'a' => 'index'];
+		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'notifications');
+				return;
+			}
+			Minz_Request::forward($redirect, true);
+			return;
+		}
+
+		try {
+			$this->extension->notificationSettings()->saveFromPayload([
+				'enabled' => Minz_Request::paramBoolean('notifications_enabled'),
+				'tags' => $this->requestNotificationTags(),
+				'bark_enabled' => Minz_Request::paramBoolean('bark_enabled'),
+				'bark_server_url' => Minz_Request::paramString('bark_server_url'),
+				'bark_device_key' => Minz_Request::paramString('bark_device_key'),
+				'bark_group' => Minz_Request::paramString('bark_group'),
+				'bark_max_per_run' => (int)Minz_Request::paramString('bark_max_per_run'),
+				'email_enabled' => Minz_Request::paramBoolean('email_enabled'),
+				'email_to' => Minz_Request::paramString('email_to'),
+				'email_subject_prefix' => Minz_Request::paramString('email_subject_prefix'),
+			]);
+			$message = _t('ext.auto_label.messages.notifications_saved');
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(true, $message, 'notifications', ['notifications']);
+				return;
+			}
+			Minz_Request::good($message, $redirect);
+		} catch (Throwable $throwable) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, $throwable->getMessage(), 'notifications');
+				return;
+			}
+			Minz_Request::bad($throwable->getMessage(), $redirect);
+		}
+
+		Minz_Request::forward($redirect, true);
+	}
+
+	public function testNotificationsAction(): void {
+		$this->requireUser();
+		$redirect = ['c' => 'autolabel', 'a' => 'index'];
+		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'notifications');
+				return;
+			}
+			Minz_Request::forward($redirect, true);
+			return;
+		}
+
+		try {
+			$result = $this->extension->notifications()->sendTest();
+			$message = _t('ext.auto_label.messages.notifications_tested');
+			if (!$result['bark'] && !$result['email']) {
+				$message = _t('ext.auto_label.messages.notifications_test_failed');
+			}
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson($result['bark'] || $result['email'], $message, 'notifications', ['notifications'], ['result' => $result]);
+				return;
+			}
+			if ($result['bark'] || $result['email']) {
+				Minz_Request::good($message, $redirect);
+			} else {
+				Minz_Request::bad($message, $redirect);
+			}
+		} catch (Throwable $throwable) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, $throwable->getMessage(), 'notifications');
+				return;
+			}
+			Minz_Request::bad($throwable->getMessage(), $redirect);
+		}
+
+		Minz_Request::forward($redirect, true);
+	}
+
+	public function clearNotificationsAction(): void {
+		$this->requireUser();
+		$redirect = ['c' => 'autolabel', 'a' => 'index'];
+		if (!Minz_Request::isPost()) {
+			if ($this->isAjaxRequest()) {
+				$this->renderActionJson(false, 'Invalid request.', 'notifications');
+				return;
+			}
+			Minz_Request::forward($redirect, true);
+			return;
+		}
+
+		$this->extension->notificationStore()->clear();
+		$message = _t('ext.auto_label.messages.notifications_cleared');
+		if ($this->isAjaxRequest()) {
+			$this->renderActionJson(true, $message, 'notifications', ['notifications']);
+			return;
+		}
+		Minz_Request::good($message, $redirect);
+		Minz_Request::forward($redirect, true);
+	}
+
 	public function saveDiagnosticsAction(): void {
 		$this->requireUser();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
@@ -674,6 +778,26 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 			$targetTag = ltrim(trim((string)$targetTag), '#');
 			if ($targetTag !== '') {
 				$normalized[$targetTag] = $targetTag;
+			}
+		}
+
+		return array_values($normalized);
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function requestNotificationTags(): array {
+		$tags = $_POST['notification_tags'] ?? [];
+		if (!is_array($tags)) {
+			return [];
+		}
+
+		$normalized = [];
+		foreach ($tags as $tag) {
+			$tag = ltrim(trim((string)$tag), '#');
+			if ($tag !== '') {
+				$normalized[$tag] = $tag;
 			}
 		}
 

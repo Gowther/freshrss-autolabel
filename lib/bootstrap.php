@@ -837,6 +837,818 @@ final class AutoLabelDiagnosticsStore {
 	}
 }
 
+final class AutoLabelNotificationSettingsRepository {
+	public const DEFAULT_BARK_SERVER_URL = 'https://api.day.app';
+	public const DEFAULT_BARK_MAX_PER_RUN = 5;
+
+	/** @var AutoLabelExtension */
+	private $extension;
+
+	public function __construct(AutoLabelExtension $extension) {
+		$this->extension = $extension;
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public function settings(): array {
+		return $this->normalizeStoredSettings($this->extension->notificationsConfiguration());
+	}
+
+	/**
+	 * @param array<string,mixed> $payload
+	 * @return array<string,mixed>
+	 */
+	public function saveFromPayload(array $payload): array {
+		$existing = $this->settings();
+		if (trim((string)($payload['bark_device_key'] ?? '')) === '' && trim((string)($existing['bark_device_key'] ?? '')) !== '') {
+			$payload['bark_device_key'] = (string)$existing['bark_device_key'];
+		}
+		$settings = $this->normalizeIncomingSettings($payload);
+		$this->extension->saveNotificationsConfiguration($settings);
+		return $settings;
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public function defaultSettings(): array {
+		return [
+			'enabled' => false,
+			'tags' => [],
+			'bark_enabled' => false,
+			'bark_server_url' => self::DEFAULT_BARK_SERVER_URL,
+			'bark_device_key' => '',
+			'bark_group' => 'AutoLabel',
+			'bark_max_per_run' => self::DEFAULT_BARK_MAX_PER_RUN,
+			'email_enabled' => false,
+			'email_to' => $this->defaultEmailTo(),
+			'email_subject_prefix' => '[AutoLabel]',
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $settings
+	 * @return array<string,mixed>
+	 */
+	private function normalizeStoredSettings(array $settings): array {
+		$settings = array_merge($this->defaultSettings(), $settings);
+		$settings['enabled'] = (bool)$settings['enabled'];
+		$settings['tags'] = $this->normalizeTags($settings['tags'] ?? []);
+		$settings['bark_enabled'] = (bool)$settings['bark_enabled'];
+		$settings['bark_server_url'] = rtrim(trim((string)$settings['bark_server_url']), "/ \t\n\r\0\x0B");
+		if ($settings['bark_server_url'] === '') {
+			$settings['bark_server_url'] = self::DEFAULT_BARK_SERVER_URL;
+		}
+		$settings['bark_device_key'] = trim((string)$settings['bark_device_key']);
+		$settings['bark_group'] = trim((string)$settings['bark_group']);
+		if ($settings['bark_group'] === '') {
+			$settings['bark_group'] = 'AutoLabel';
+		}
+		$settings['bark_max_per_run'] = max(0, min(100, (int)$settings['bark_max_per_run']));
+		$settings['email_enabled'] = (bool)$settings['email_enabled'];
+		$settings['email_to'] = trim((string)$settings['email_to']);
+		$settings['email_subject_prefix'] = trim((string)$settings['email_subject_prefix']);
+		if ($settings['email_subject_prefix'] === '') {
+			$settings['email_subject_prefix'] = '[AutoLabel]';
+		}
+
+		return $settings;
+	}
+
+	/**
+	 * @param array<string,mixed> $payload
+	 * @return array<string,mixed>
+	 */
+	private function normalizeIncomingSettings(array $payload): array {
+		$settings = $this->normalizeStoredSettings($payload);
+		if ($settings['enabled'] && $settings['bark_enabled'] && $settings['bark_device_key'] === '') {
+			throw new InvalidArgumentException('Bark device key is required when Bark notifications are enabled.');
+		}
+		if ($settings['enabled'] && $settings['email_enabled'] && $settings['email_to'] === '') {
+			throw new InvalidArgumentException('Email recipient is required when email notifications are enabled.');
+		}
+		if ($settings['enabled'] && !$settings['bark_enabled'] && !$settings['email_enabled']) {
+			throw new InvalidArgumentException('Enable at least one notification channel.');
+		}
+
+		return $settings;
+	}
+
+	/**
+	 * @param mixed $tags
+	 * @return list<string>
+	 */
+	private function normalizeTags($tags): array {
+		if (is_string($tags)) {
+			$tags = [$tags];
+		}
+		if (!is_array($tags)) {
+			return [];
+		}
+
+		$normalized = [];
+		foreach ($tags as $tag) {
+			$tag = ltrim(trim((string)$tag), '#');
+			if ($tag !== '') {
+				$normalized[$tag] = $tag;
+			}
+		}
+
+		natcasesort($normalized);
+		return array_values($normalized);
+	}
+
+	private function defaultEmailTo(): string {
+		if (class_exists('FreshRSS_Context') && method_exists('FreshRSS_Context', 'hasUserConf') && FreshRSS_Context::hasUserConf()) {
+			$userConf = FreshRSS_Context::userConf();
+			if (is_object($userConf) && isset($userConf->mail_login)) {
+				return trim((string)$userConf->mail_login);
+			}
+		}
+
+		return '';
+	}
+}
+
+final class AutoLabelNotificationStore {
+	private const NOTIFICATION_FILE = 'notifications.json';
+	private const MAX_PENDING_EMAIL_EVENTS = 1000;
+	private const MAX_SENT_KEYS = 5000;
+	private const SENT_TTL_SECONDS = 2592000;
+
+	/** @var AutoLabelExtension */
+	private $extension;
+
+	public function __construct(AutoLabelExtension $extension) {
+		$this->extension = $extension;
+	}
+
+	/**
+	 * @return array{pending_email:int,sent_email:int,sent_bark:int,last_delivery:array<string,mixed>|null}
+	 */
+	public function summary(): array {
+		$data = $this->read();
+		return [
+			'pending_email' => count($data['pending_email']),
+			'sent_email' => count($data['sent_email']),
+			'sent_bark' => count($data['sent_bark']),
+			'last_delivery' => is_array($data['last_delivery'] ?? null) ? $data['last_delivery'] : null,
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $event
+	 */
+	public function queueEmailEvent(array $event): bool {
+		$key = trim((string)($event['key'] ?? ''));
+		if ($key === '') {
+			return false;
+		}
+
+		$data = $this->read();
+		if (isset($data['sent_email'][$key]) || $this->hasPendingEvent($data['pending_email'], $key)) {
+			return false;
+		}
+
+		array_unshift($data['pending_email'], $event);
+		$data['pending_email'] = array_slice(array_values(array_filter($data['pending_email'], 'is_array')), 0, self::MAX_PENDING_EMAIL_EVENTS);
+		$this->write($data);
+		return true;
+	}
+
+	/**
+	 * @return list<array<string,mixed>>
+	 */
+	public function pendingEmailEvents(): array {
+		return $this->read()['pending_email'];
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $events
+	 */
+	public function markEmailEventsSent(array $events): void {
+		$data = $this->read();
+		$sentAt = time();
+		$sentKeys = [];
+		foreach ($events as $event) {
+			$key = trim((string)($event['key'] ?? ''));
+			if ($key !== '') {
+				$data['sent_email'][$key] = $sentAt;
+				$sentKeys[$key] = true;
+			}
+		}
+		$data['pending_email'] = array_values(array_filter(
+			$data['pending_email'],
+			static fn (array $event): bool => !isset($sentKeys[(string)($event['key'] ?? '')])
+		));
+		$data['sent_email'] = $this->pruneSentMap($data['sent_email']);
+		$this->write($data);
+	}
+
+	public function hasBarkSent(string $key): bool {
+		$data = $this->read();
+		return isset($data['sent_bark'][$key]);
+	}
+
+	public function markBarkSent(string $key): void {
+		if ($key === '') {
+			return;
+		}
+
+		$data = $this->read();
+		$data['sent_bark'][$key] = time();
+		$data['sent_bark'] = $this->pruneSentMap($data['sent_bark']);
+		$this->write($data);
+	}
+
+	/**
+	 * @param array<string,mixed> $delivery
+	 */
+	public function setLastDelivery(array $delivery): void {
+		$data = $this->read();
+		$data['last_delivery'] = array_merge(['at' => date(DATE_ATOM)], $delivery);
+		$this->write($data);
+	}
+
+	public function clear(): void {
+		$this->extension->deleteUserDataFile(self::NOTIFICATION_FILE);
+	}
+
+	/**
+	 * @return array{pending_email:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,last_delivery:array<string,mixed>|null}
+	 */
+	private function read(): array {
+		$content = $this->extension->readUserDataFile(self::NOTIFICATION_FILE);
+		if (!is_string($content) || $content === '') {
+			return ['pending_email' => [], 'sent_email' => [], 'sent_bark' => [], 'last_delivery' => null];
+		}
+
+		$data = json_decode($content, true);
+		if (!is_array($data)) {
+			return ['pending_email' => [], 'sent_email' => [], 'sent_bark' => [], 'last_delivery' => null];
+		}
+
+		return [
+			'pending_email' => array_values(array_filter($data['pending_email'] ?? [], 'is_array')),
+			'sent_email' => $this->pruneSentMap(is_array($data['sent_email'] ?? null) ? $data['sent_email'] : []),
+			'sent_bark' => $this->pruneSentMap(is_array($data['sent_bark'] ?? null) ? $data['sent_bark'] : []),
+			'last_delivery' => is_array($data['last_delivery'] ?? null) ? $data['last_delivery'] : null,
+		];
+	}
+
+	/**
+	 * @param array{pending_email:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,last_delivery:array<string,mixed>|null} $data
+	 */
+	private function write(array $data): void {
+		$this->extension->writeUserDataFile(
+			self::NOTIFICATION_FILE,
+			(string)json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+		);
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $events
+	 */
+	private function hasPendingEvent(array $events, string $key): bool {
+		foreach ($events as $event) {
+			if ((string)($event['key'] ?? '') === $key) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param array<string,mixed> $map
+	 * @return array<string,int>
+	 */
+	private function pruneSentMap(array $map): array {
+		$now = time();
+		$normalized = [];
+		foreach ($map as $key => $timestamp) {
+			$key = trim((string)$key);
+			$timestamp = (int)$timestamp;
+			if ($key === '' || $timestamp <= 0 || $timestamp < ($now - self::SENT_TTL_SECONDS)) {
+				continue;
+			}
+			$normalized[$key] = $timestamp;
+		}
+		arsort($normalized);
+		return array_slice($normalized, 0, self::MAX_SENT_KEYS, true);
+	}
+}
+
+final class AutoLabelNotificationService {
+	/** @var AutoLabelNotificationSettingsRepository */
+	private $settings;
+	/** @var AutoLabelNotificationStore */
+	private $store;
+	/** @var AutoLabelDiagnosticsStore */
+	private $diagnostics;
+	/** @var AutoLabelHttpClient */
+	private $http;
+	/** @var int */
+	private $barkSentThisRun = 0;
+
+	public function __construct(
+		AutoLabelNotificationSettingsRepository $settings,
+		AutoLabelNotificationStore $store,
+		AutoLabelDiagnosticsStore $diagnostics,
+		AutoLabelHttpClient $http
+	) {
+		$this->settings = $settings;
+		$this->store = $store;
+		$this->diagnostics = $diagnostics;
+		$this->http = $http;
+	}
+
+	/**
+	 * @param list<string> $beforeTags
+	 * @param array<string,mixed> $persist
+	 * @param list<array<string,mixed>> $results
+	 */
+	public function recordMatches(FreshRSS_Entry $entry, array $beforeTags, array $persist, array $results, string $source): void {
+		$settings = $this->settings->settings();
+		if (empty($settings['enabled'])) {
+			return;
+		}
+
+		$newTags = $this->newlyAppliedTags($beforeTags, $persist);
+		if (count($newTags) === 0) {
+			return;
+		}
+
+		foreach ($newTags as $tag) {
+			if (!$this->tagIsEnabled($settings, $tag)) {
+				continue;
+			}
+
+			$event = $this->buildEvent($entry, $tag, $results, $source);
+			if (!empty($settings['email_enabled'])) {
+				$this->store->queueEmailEvent($event);
+			}
+			if (!empty($settings['bark_enabled'])) {
+				$this->sendBarkEventIfAllowed($settings, $event);
+			}
+		}
+	}
+
+	/**
+	 * @return array{sent:bool,count:int,error?:string}
+	 */
+	public function flushEmailDigest(): array {
+		$settings = $this->settings->settings();
+		if (empty($settings['enabled']) || empty($settings['email_enabled'])) {
+			return ['sent' => false, 'count' => 0];
+		}
+		if (trim((string)($settings['email_to'] ?? '')) === '') {
+			return ['sent' => false, 'count' => 0, 'error' => 'Email recipient is empty.'];
+		}
+
+		$events = $this->store->pendingEmailEvents();
+		if (count($events) === 0) {
+			return ['sent' => false, 'count' => 0];
+		}
+
+		$subject = $this->emailSubject($settings, $events);
+		$body = $this->emailBody($events);
+		try {
+			$sent = $this->sendPlainEmail((string)$settings['email_to'], $subject, $body);
+		} catch (Throwable $throwable) {
+			$sent = false;
+			$error = $throwable->getMessage();
+		}
+
+		if ($sent) {
+			$this->store->markEmailEventsSent($events);
+			$this->store->setLastDelivery([
+				'channel' => 'email',
+				'ok' => true,
+				'count' => count($events),
+				'to' => (string)$settings['email_to'],
+			]);
+			$this->diagnostics->append([
+				'type' => 'notification_email_digest',
+				'count' => count($events),
+				'to' => (string)$settings['email_to'],
+			]);
+			return ['sent' => true, 'count' => count($events)];
+		}
+
+		$error = $error ?? 'Email delivery failed.';
+		$this->store->setLastDelivery([
+			'channel' => 'email',
+			'ok' => false,
+			'count' => count($events),
+			'error' => $error,
+		]);
+		$this->diagnostics->append([
+			'type' => 'notification_email_error',
+			'count' => count($events),
+			'error' => $error,
+		]);
+		return ['sent' => false, 'count' => count($events), 'error' => $error];
+	}
+
+	/**
+	 * @return array{bark:bool,email:bool}
+	 */
+	public function sendTest(): array {
+		$settings = $this->settings->settings();
+		if (empty($settings['enabled'])) {
+			throw new RuntimeException('Notifications are disabled.');
+		}
+
+		$event = [
+			'key' => 'test:' . bin2hex(random_bytes(6)),
+			'at' => date(DATE_ATOM),
+			'source' => 'test',
+			'tag' => 'AutoLabel',
+			'title' => 'AutoLabel notification test',
+			'feed' => '',
+			'url' => $this->siteUrl(),
+			'rule_names' => ['Test'],
+			'reasons' => ['This is a test notification from AutoLabel.'],
+		];
+
+		$result = ['bark' => false, 'email' => false];
+		if (!empty($settings['bark_enabled'])) {
+			$result['bark'] = $this->sendBarkEvent($settings, $event);
+		}
+		if (!empty($settings['email_enabled'])) {
+			$result['email'] = $this->sendPlainEmail(
+				(string)$settings['email_to'],
+				$this->emailSubject($settings, [$event]),
+				$this->emailBody([$event])
+			);
+		}
+		$this->store->setLastDelivery([
+			'channel' => 'test',
+			'ok' => $result['bark'] || $result['email'],
+			'bark' => $result['bark'],
+			'email' => $result['email'],
+		]);
+
+		return $result;
+	}
+
+	/**
+	 * @param list<string> $beforeTags
+	 * @param array<string,mixed> $persist
+	 * @return list<string>
+	 */
+	private function newlyAppliedTags(array $beforeTags, array $persist): array {
+		$before = array_fill_keys($this->normalizeTags($beforeTags), true);
+		$failed = array_fill_keys($this->normalizeTags(is_array($persist['failed_tags'] ?? null) ? $persist['failed_tags'] : []), true);
+		$newTags = [];
+		foreach ($this->normalizeTags(is_array($persist['applied_tags'] ?? null) ? $persist['applied_tags'] : []) as $tag) {
+			if (!isset($before[$tag]) && !isset($failed[$tag])) {
+				$newTags[$tag] = $tag;
+			}
+		}
+		return array_values($newTags);
+	}
+
+	/**
+	 * @param array<string,mixed> $settings
+	 */
+	private function tagIsEnabled(array $settings, string $tag): bool {
+		$tags = is_array($settings['tags'] ?? null) ? $settings['tags'] : [];
+		if (count($tags) === 0) {
+			return true;
+		}
+
+		return in_array($tag, $tags, true);
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $results
+	 * @return array<string,mixed>
+	 */
+	private function buildEvent(FreshRSS_Entry $entry, string $tag, array $results, string $source): array {
+		$details = $this->matchingDetailsForTag($tag, $results);
+		$url = method_exists($entry, 'link') ? trim(htmlspecialchars_decode((string)$entry->link(true), ENT_QUOTES | ENT_HTML5)) : '';
+		$feedTitle = '';
+		$feed = method_exists($entry, 'feed') ? $entry->feed() : null;
+		if ($feed !== null && method_exists($feed, 'name')) {
+			$feedTitle = trim((string)$feed->name());
+		}
+
+		return [
+			'key' => hash('sha256', $this->entryKey($entry) . '|' . $tag),
+			'at' => date(DATE_ATOM),
+			'source' => $source,
+			'tag' => $tag,
+			'title' => trim((string)$entry->title()),
+			'feed' => $feedTitle,
+			'url' => $url,
+			'entry_id' => method_exists($entry, 'id') ? (int)$entry->id() : 0,
+			'feed_id' => method_exists($entry, 'feedId') ? (int)$entry->feedId() : 0,
+			'rule_names' => $details['rule_names'],
+			'reasons' => $details['reasons'],
+		];
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $results
+	 * @return array{rule_names:list<string>,reasons:list<string>}
+	 */
+	private function matchingDetailsForTag(string $tag, array $results): array {
+		$ruleNames = [];
+		$reasons = [];
+		foreach ($results as $result) {
+			if (empty($result['matched'])) {
+				continue;
+			}
+			$targetTags = $this->normalizeTags(is_array($result['target_tags'] ?? null) ? $result['target_tags'] : []);
+			if (!in_array($tag, $targetTags, true)) {
+				continue;
+			}
+			$ruleName = trim((string)($result['rule_name'] ?? ''));
+			if ($ruleName !== '') {
+				$ruleNames[$ruleName] = $ruleName;
+			}
+			$reason = trim((string)($result['reason'] ?? ''));
+			if ($reason !== '') {
+				$reasons[$reason] = $reason;
+			}
+		}
+
+		return [
+			'rule_names' => array_values($ruleNames),
+			'reasons' => array_values($reasons),
+		];
+	}
+
+	/**
+	 * @param array<string,mixed> $settings
+	 * @param array<string,mixed> $event
+	 */
+	private function sendBarkEventIfAllowed(array $settings, array $event): void {
+		$key = (string)($event['key'] ?? '');
+		if ($key === '' || $this->store->hasBarkSent($key)) {
+			return;
+		}
+		$maxPerRun = max(0, (int)($settings['bark_max_per_run'] ?? AutoLabelNotificationSettingsRepository::DEFAULT_BARK_MAX_PER_RUN));
+		if ($this->barkSentThisRun >= $maxPerRun) {
+			$this->diagnostics->append([
+				'type' => 'notification_bark_skipped',
+				'reason' => 'max_per_run',
+				'tag' => (string)($event['tag'] ?? ''),
+				'title' => (string)($event['title'] ?? ''),
+			]);
+			return;
+		}
+
+		if ($this->sendBarkEvent($settings, $event)) {
+			$this->store->markBarkSent($key);
+			++$this->barkSentThisRun;
+		}
+	}
+
+	/**
+	 * @param array<string,mixed> $settings
+	 * @param array<string,mixed> $event
+	 */
+	private function sendBarkEvent(array $settings, array $event): bool {
+		$serverUrl = rtrim((string)($settings['bark_server_url'] ?? ''), '/');
+		$deviceKey = trim((string)($settings['bark_device_key'] ?? ''));
+		if ($serverUrl === '' || $deviceKey === '') {
+			return false;
+		}
+
+		$url = $serverUrl . '/push';
+		$payload = [
+			'device_key' => $deviceKey,
+			'title' => $this->truncate('#' . (string)$event['tag'] . ' ' . (string)$event['title'], 120),
+			'body' => $this->barkBody($event),
+			'url' => (string)($event['url'] ?? ''),
+			'group' => (string)($settings['bark_group'] ?? 'AutoLabel'),
+		];
+
+		try {
+			$this->http->postJson($url, $payload, [], 8);
+			$this->store->setLastDelivery([
+				'channel' => 'bark',
+				'ok' => true,
+				'tag' => (string)($event['tag'] ?? ''),
+				'title' => (string)($event['title'] ?? ''),
+			]);
+			return true;
+		} catch (Throwable $throwable) {
+			$this->store->setLastDelivery([
+				'channel' => 'bark',
+				'ok' => false,
+				'error' => $throwable->getMessage(),
+			]);
+			$this->diagnostics->append([
+				'type' => 'notification_bark_error',
+				'error' => $throwable->getMessage(),
+				'tag' => (string)($event['tag'] ?? ''),
+				'title' => (string)($event['title'] ?? ''),
+			]);
+			return false;
+		}
+	}
+
+	/**
+	 * @param array<string,mixed> $event
+	 */
+	private function barkBody(array $event): string {
+		$lines = [];
+		$feed = trim((string)($event['feed'] ?? ''));
+		if ($feed !== '') {
+			$lines[] = $feed;
+		}
+		$ruleNames = is_array($event['rule_names'] ?? null) ? $event['rule_names'] : [];
+		if (count($ruleNames) > 0) {
+			$lines[] = 'Rule: ' . implode(', ', array_map('strval', $ruleNames));
+		}
+		$reasons = is_array($event['reasons'] ?? null) ? $event['reasons'] : [];
+		if (count($reasons) > 0) {
+			$lines[] = $this->truncate((string)$reasons[0], 180);
+		}
+		if (count($lines) === 0) {
+			$title = trim((string)($event['title'] ?? ''));
+			$lines[] = $title !== '' ? $title : 'AutoLabel matched a new article.';
+		}
+		return implode("\n", $lines);
+	}
+
+	/**
+	 * @param array<string,mixed> $settings
+	 * @param list<array<string,mixed>> $events
+	 */
+	private function emailSubject(array $settings, array $events): string {
+		$count = count($events);
+		$prefix = trim((string)($settings['email_subject_prefix'] ?? '[AutoLabel]'));
+		return trim($prefix . ' ' . $count . ' new match' . ($count === 1 ? '' : 'es'));
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $events
+	 */
+	private function emailBody(array $events): string {
+		$groups = [];
+		foreach ($events as $event) {
+			$tag = trim((string)($event['tag'] ?? ''));
+			if ($tag === '') {
+				$tag = 'AutoLabel';
+			}
+			$groups[$tag][] = $event;
+		}
+
+		$lines = [
+			'AutoLabel notification digest',
+			'Generated at: ' . date(DATE_ATOM),
+			'',
+		];
+		foreach ($groups as $tag => $tagEvents) {
+			$lines[] = '#' . $tag . ' (' . count($tagEvents) . ')';
+			foreach ($tagEvents as $event) {
+				$title = trim((string)($event['title'] ?? 'Untitled'));
+				$lines[] = '- ' . ($title !== '' ? $title : 'Untitled');
+				$feed = trim((string)($event['feed'] ?? ''));
+				if ($feed !== '') {
+					$lines[] = '  Feed: ' . $feed;
+				}
+				$ruleNames = is_array($event['rule_names'] ?? null) ? array_values(array_filter(array_map('strval', $event['rule_names']))) : [];
+				if (count($ruleNames) > 0) {
+					$lines[] = '  Rule: ' . implode(', ', $ruleNames);
+				}
+				$url = trim((string)($event['url'] ?? ''));
+				if ($url !== '') {
+					$lines[] = '  Source: ' . $url;
+				}
+				$reasons = is_array($event['reasons'] ?? null) ? array_values(array_filter(array_map('strval', $event['reasons']))) : [];
+				if (count($reasons) > 0) {
+					$lines[] = '  Reason: ' . $this->truncate((string)$reasons[0], 300);
+				}
+			}
+			$lines[] = '';
+		}
+
+		return implode("\n", $lines);
+	}
+
+	private function sendPlainEmail(string $to, string $subject, string $body): bool {
+		$to = trim($to);
+		if ($to === '') {
+			return false;
+		}
+
+		if (class_exists('PHPMailer\\PHPMailer\\PHPMailer') && class_exists('Minz_Configuration')) {
+			return $this->sendPlainEmailWithPhpMailer($to, $subject, $body);
+		}
+
+		$headers = "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n";
+		return function_exists('mail') && @mail($to, $subject, $body, $headers);
+	}
+
+	private function sendPlainEmailWithPhpMailer(string $to, string $subject, string $body): bool {
+		$conf = Minz_Configuration::get('system');
+		$smtp = is_array($conf->smtp ?? null) ? $conf->smtp : [];
+		\PHPMailer\PHPMailer\PHPMailer::$validator = 'html5';
+		$mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+		try {
+			$mail->Debugoutput = 'error_log';
+			$mail->SMTPDebug = (string)($conf->environment ?? '') === 'development' ? 2 : 0;
+			if ((string)($conf->mailer ?? '') === 'smtp') {
+				$mail->isSMTP();
+				$mail->Hostname = (string)($smtp['hostname'] ?? '');
+				$mail->Host = (string)($smtp['host'] ?? '');
+				$mail->SMTPAuth = (bool)($smtp['auth'] ?? false);
+				$mail->Username = (string)($smtp['username'] ?? '');
+				$mail->Password = (string)($smtp['password'] ?? '');
+				$mail->SMTPSecure = (string)($smtp['secure'] ?? '');
+				$mail->Port = (int)($smtp['port'] ?? 25);
+			} else {
+				$mail->isMail();
+			}
+
+			$from = trim((string)($smtp['from'] ?? ''));
+			if ($from === '') {
+				$from = 'noreply@localhost';
+			}
+			$mail->setFrom($from, 'AutoLabel');
+			$mail->addAddress($to);
+			$mail->isHTML(false);
+			$mail->CharSet = 'utf-8';
+			$mail->Subject = $subject;
+			$mail->Body = $body;
+			$mail->send();
+			return true;
+		} catch (Throwable $throwable) {
+			if (class_exists('Minz_Log')) {
+				Minz_Log::warning('AutoLabel notification email failed: ' . $throwable->getMessage());
+			}
+			return false;
+		}
+	}
+
+	/**
+	 * @param mixed $tags
+	 * @return list<string>
+	 */
+	private function normalizeTags($tags): array {
+		if (is_string($tags)) {
+			$tags = [$tags];
+		}
+		if (!is_array($tags)) {
+			return [];
+		}
+
+		$normalized = [];
+		foreach ($tags as $tag) {
+			$tag = ltrim(trim((string)$tag), '#');
+			if ($tag !== '') {
+				$normalized[$tag] = $tag;
+			}
+		}
+		return array_values($normalized);
+	}
+
+	private function entryKey(FreshRSS_Entry $entry): string {
+		if (method_exists($entry, 'id') && (int)$entry->id() > 0) {
+			return 'id:' . (string)$entry->id();
+		}
+		if (method_exists($entry, 'guid')) {
+			$guid = trim((string)$entry->guid());
+			if ($guid !== '') {
+				return 'guid:' . (string)(method_exists($entry, 'feedId') ? (int)$entry->feedId() : 0) . ':' . $guid;
+			}
+		}
+
+		$link = method_exists($entry, 'link') ? trim((string)$entry->link(true)) : '';
+		$title = method_exists($entry, 'title') ? trim((string)$entry->title()) : '';
+		$date = method_exists($entry, 'date') ? (string)$entry->date(true) : '';
+		return hash('sha256', implode('|', [$link, $title, $date]));
+	}
+
+	private function siteUrl(): string {
+		if (class_exists('Minz_Url')) {
+			return Minz_Url::display(['c' => 'index', 'a' => 'index'], 'html', true);
+		}
+
+		return '';
+	}
+
+	private function truncate(string $value, int $maxLength): string {
+		if ($maxLength <= 0) {
+			return '';
+		}
+		if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+			return mb_strlen($value, 'UTF-8') <= $maxLength
+				? $value
+				: mb_substr($value, 0, max(0, $maxLength - 1), 'UTF-8') . '...';
+		}
+
+		return strlen($value) <= $maxLength ? $value : substr($value, 0, max(0, $maxLength - 3)) . '...';
+	}
+}
+
 final class AutoLabelQueueStore {
 	private const QUEUE_FILE = 'queue.json';
 	private const MANUAL_RUN_FILE = 'queue-run.json';
@@ -3343,15 +4155,19 @@ final class AutoLabelBackfillService {
 	private $engine;
 	/** @var AutoLabelDiagnosticsStore */
 	private $diagnostics;
+	/** @var AutoLabelNotificationService */
+	private $notifications;
 
 	public function __construct(
 		AutoLabelSystemProfileRepository $profiles,
 		AutoLabelEngine $engine,
-		AutoLabelDiagnosticsStore $diagnostics
+		AutoLabelDiagnosticsStore $diagnostics,
+		AutoLabelNotificationService $notifications
 	) {
 		$this->profiles = $profiles;
 		$this->engine = $engine;
 		$this->diagnostics = $diagnostics;
+		$this->notifications = $notifications;
 	}
 
 	/**
@@ -3727,6 +4543,7 @@ final class AutoLabelBackfillService {
 				if (!empty($persist['updated'])) {
 					++$updated;
 					$matchedTags += max(0, count($persist['applied_tags']) - count($beforeTags));
+					$this->notifications->recordMatches($entry, $beforeTags, $persist, is_array($entryResult['results'] ?? null) ? $entryResult['results'] : [], 'backfill');
 				}
 			}
 
@@ -4013,6 +4830,8 @@ final class AutoLabelQueueProcessor {
 	private $diagnostics;
 	/** @var AutoLabelBackfillService */
 	private $backfill;
+	/** @var AutoLabelNotificationService */
+	private $notifications;
 
 	public function __construct(
 		AutoLabelQueueStore $queue,
@@ -4020,7 +4839,8 @@ final class AutoLabelQueueProcessor {
 		AutoLabelUserRuleRepository $rules,
 		AutoLabelEngine $engine,
 		AutoLabelDiagnosticsStore $diagnostics,
-		AutoLabelBackfillService $backfill
+		AutoLabelBackfillService $backfill,
+		AutoLabelNotificationService $notifications
 	) {
 		$this->queue = $queue;
 		$this->profiles = $profiles;
@@ -4028,6 +4848,7 @@ final class AutoLabelQueueProcessor {
 		$this->engine = $engine;
 		$this->diagnostics = $diagnostics;
 		$this->backfill = $backfill;
+		$this->notifications = $notifications;
 	}
 
 	/**
@@ -4139,6 +4960,9 @@ final class AutoLabelQueueProcessor {
 				'source' => $source,
 				'stats' => $stats,
 			]);
+		}
+		if ($stored && $stats['remaining_items'] === 0) {
+			$this->notifications->flushEmailDigest();
 		}
 
 		return $stats;
@@ -4334,6 +5158,13 @@ final class AutoLabelQueueProcessor {
 				if (!empty($persist['updated'])) {
 					$stats['updated_entries']++;
 					$stats['matched_tags'] += max(0, count($persist['applied_tags']) - count($state['before_tags']));
+					$this->notifications->recordMatches(
+						$state['entry'],
+						is_array($state['before_tags'] ?? null) ? $state['before_tags'] : [],
+						$persist,
+						is_array($aggregate['results'] ?? null) ? $aggregate['results'] : [],
+						'queue'
+					);
 				}
 			}
 
@@ -4508,6 +5339,7 @@ final class AutoLabelQueueProcessor {
 			if ($persist['updated']) {
 				$updatedEntries = 1;
 				$matchedTags = max(0, count($persist['applied_tags']) - count($beforeTags));
+				$this->notifications->recordMatches($entry, $beforeTags, $persist, is_array($result['results'] ?? null) ? $result['results'] : [], 'queue');
 			}
 		}
 

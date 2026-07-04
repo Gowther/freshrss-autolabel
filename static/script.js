@@ -325,6 +325,9 @@ document.addEventListener('DOMContentLoaded', () => {
     'dryRun',
     'backfill',
     'clearQueue',
+    'saveNotifications',
+    'testNotifications',
+    'clearNotifications',
     'saveDiagnostics',
     'clearDiagnostics',
   ];
@@ -602,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const needsDocument = panels.some((panel) => ['profiles', 'rules', 'diagnostics', 'tools_selects'].includes(panel));
+    const needsDocument = panels.some((panel) => ['profiles', 'rules', 'notifications', 'diagnostics', 'tools_selects'].includes(panel));
     const doc = needsDocument ? await fetchAutolabelDocument(url || window.location.href) : null;
     for (const panel of panels) {
       if (panel === 'tools_queue') {

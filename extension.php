@@ -77,6 +77,29 @@ final class AutoLabelExtension extends Minz_Extension {
 		$this->setUserConfiguration($configuration);
 	}
 
+	public function notificationsConfiguration(): array {
+		if (method_exists($this, 'getUserConfigurationArray')) {
+			return $this->getUserConfigurationArray('notifications') ?? [];
+		}
+
+		$configuration = $this->getUserConfiguration();
+		return is_array($configuration['notifications'] ?? null) ? $configuration['notifications'] : [];
+	}
+
+	/**
+	 * @param array<string,mixed> $configuration
+	 */
+	public function saveNotificationsConfiguration(array $configuration): void {
+		if (method_exists($this, 'setUserConfigurationValue')) {
+			$this->setUserConfigurationValue('notifications', $configuration);
+			return;
+		}
+
+		$userConfiguration = $this->getUserConfiguration();
+		$userConfiguration['notifications'] = $configuration;
+		$this->setUserConfiguration($userConfiguration);
+	}
+
 	public function diagnosticsEnabled(): bool {
 		if (method_exists($this, 'getUserConfigurationValue')) {
 			$value = $this->getUserConfigurationValue('diagnostics_enabled');
@@ -154,8 +177,25 @@ final class AutoLabelExtension extends Minz_Extension {
 		return new AutoLabelUserRuleRepository($this, $this->systemProfiles(), $this->profileCapabilities());
 	}
 
+	public function notificationSettings(): AutoLabelNotificationSettingsRepository {
+		return new AutoLabelNotificationSettingsRepository($this);
+	}
+
 	public function diagnostics(): AutoLabelDiagnosticsStore {
 		return new AutoLabelDiagnosticsStore($this);
+	}
+
+	public function notificationStore(): AutoLabelNotificationStore {
+		return new AutoLabelNotificationStore($this);
+	}
+
+	public function notifications(): AutoLabelNotificationService {
+		return new AutoLabelNotificationService(
+			$this->notificationSettings(),
+			$this->notificationStore(),
+			$this->diagnostics(),
+			new AutoLabelHttpClient()
+		);
 	}
 
 	public function queueStore(): AutoLabelQueueStore {
@@ -181,17 +221,26 @@ final class AutoLabelExtension extends Minz_Extension {
 	}
 
 	public function backfillService(): AutoLabelBackfillService {
-		return new AutoLabelBackfillService($this->systemProfiles(), $this->engine(), $this->diagnostics());
+		return new AutoLabelBackfillService($this->systemProfiles(), $this->engine(), $this->diagnostics(), $this->notifications());
 	}
 
 	public function queueProcessor(): AutoLabelQueueProcessor {
+		$notifications = $this->notifications();
+		$backfillService = new AutoLabelBackfillService(
+			$this->systemProfiles(),
+			$this->engine(),
+			$this->diagnostics(),
+			$notifications
+		);
+
 		return new AutoLabelQueueProcessor(
 			$this->queueStore(),
 			$this->systemProfiles(),
 			$this->userRules(),
 			$this->engine(),
 			$this->diagnostics(),
-			$this->backfillService()
+			$backfillService,
+			$notifications
 		);
 	}
 

@@ -214,7 +214,9 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
 
 .autolabel-form input[type="text"],
 .autolabel-form input[type="password"],
+.autolabel-form input[type="email"],
 .autolabel-form input[type="number"],
+.autolabel-form input[type="url"],
 .autolabel-form select,
 .autolabel-form textarea {
   width: 100%;
@@ -237,6 +239,19 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
   outline: none;
   border-color: rgba(32, 119, 181, 0.7);
   box-shadow: 0 0 0 3px rgba(32, 119, 181, 0.18);
+}
+
+.autolabel-subsection {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid var(--autolabel-border);
+  border-radius: 8px;
+  padding: 0.9rem;
+  background: var(--autolabel-surface-alt);
+}
+
+.autolabel-subsection h3 {
+  margin: 0;
 }
 
 .autolabel-form input[type="checkbox"] {
