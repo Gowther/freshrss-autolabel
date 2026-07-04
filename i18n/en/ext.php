@@ -143,6 +143,11 @@ return [
 				'pending_email' => 'Pending email events',
 				'sent_email' => 'Email dedupe keys',
 				'sent_bark' => 'Bark dedupe keys',
+				'selected_count' => '%d selected',
+				'tag_mode' => [
+					'all' => 'Notify every new label',
+					'selected' => 'Only selected labels',
+				],
 				'fields' => [
 					'enabled' => 'Enable notifications',
 					'tags' => 'Notify tags',
@@ -159,11 +164,14 @@ return [
 					'save' => 'Save notification settings',
 					'test' => 'Send test notification',
 					'clear' => 'Clear notification state',
+					'select_all_tags' => 'Select all',
+					'clear_tags' => 'Clear',
 				],
 				'help' => [
-					'tags' => 'Leave empty to notify every newly applied AutoLabel tag. Select tags here to limit notifications to high-priority labels.',
+					'tags' => 'Choose all labels for broad delivery, or switch to selected labels for high-priority notifications only.',
+					'no_tags' => 'Create labels before limiting notifications to selected labels.',
 					'bark' => 'Bark sends one immediate push per matched article, up to the per-run cap. The notification opens the source article URL.',
-					'email' => 'Email digests are sent when the queue becomes idle. Each article title and source URL is listed under its matched tag.',
+					'email' => 'Email digests are sent when the queue becomes idle. Each article appears once with all matched tags and its source URL.',
 				],
 				'confirm_clear' => 'Clear pending notification events and dedupe history?',
 			],

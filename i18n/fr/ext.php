@@ -143,6 +143,11 @@ return [
 			'pending_email' => 'Événements e-mail en attente',
 			'sent_email' => 'Clés de déduplication e-mail',
 			'sent_bark' => 'Clés de déduplication Bark',
+			'selected_count' => '%d sélectionné(s)',
+			'tag_mode' => [
+				'all' => 'Notifier tous les nouveaux tags',
+				'selected' => 'Seulement les tags sélectionnés',
+			],
 			'fields' => [
 				'enabled' => 'Activer les notifications',
 				'tags' => 'Tags à notifier',
@@ -159,11 +164,14 @@ return [
 				'save' => 'Enregistrer les notifications',
 				'test' => 'Envoyer une notification de test',
 				'clear' => 'Effacer l’état des notifications',
+				'select_all_tags' => 'Tout sélectionner',
+				'clear_tags' => 'Effacer',
 			],
 			'help' => [
-				'tags' => 'Laissez vide pour notifier tous les nouveaux tags AutoLabel. Sélectionnez des tags pour limiter les notifications aux libellés prioritaires.',
+				'tags' => 'Choisissez tous les tags pour une diffusion large, ou limitez aux tags sélectionnés pour les notifications prioritaires.',
+				'no_tags' => 'Créez des tags avant de limiter les notifications à une sélection.',
 				'bark' => 'Bark envoie une notification immédiate par article correspondant, jusqu’à la limite par exécution. La notification ouvre l’URL source.',
-				'email' => 'Les résumés e-mail sont envoyés lorsque la file devient inactive. Chaque titre et URL source est listé sous son tag.',
+				'email' => 'Les résumés e-mail sont envoyés lorsque la file devient inactive. Chaque article apparaît une seule fois avec tous ses tags et son URL source.',
 			],
 			'confirm_clear' => 'Effacer les notifications en attente et l’historique de déduplication ?',
 		],

@@ -1,4 +1,4 @@
-window.__AutoLabelScriptVersion = '0.5.4-ajax-v1';
+window.__AutoLabelScriptVersion = '0.6.1-notification-tags-v1';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -536,6 +536,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const enhanceNotificationTagControls = (scope) => {
+    for (const root of scope.querySelectorAll('[data-autolabel-notification-tags]')) {
+      if (!(root instanceof HTMLElement) || root.dataset.autolabelControlsEnhanced === 'true') {
+        continue;
+      }
+
+      root.dataset.autolabelControlsEnhanced = 'true';
+      const selectedMode = root.querySelector('input[name="notification_tag_mode"][value="selected"]');
+      const radios = Array.from(root.querySelectorAll('input[name="notification_tag_mode"]'));
+      const checkboxes = Array.from(root.querySelectorAll('input[name="notification_tags[]"]'));
+      const list = root.querySelector('[data-autolabel-notification-tag-list]');
+      const count = root.querySelector('[data-autolabel-notification-tag-count]');
+      const selectAll = root.querySelector('[data-autolabel-notification-tag-select-all]');
+      const clear = root.querySelector('[data-autolabel-notification-tag-clear]');
+
+      const updateCount = () => {
+        if (!(count instanceof HTMLElement)) {
+          return;
+        }
+
+        const checked = checkboxes.filter((checkbox) => checkbox.checked).length;
+        const template = count.dataset.countTemplate || '%d selected';
+        count.textContent = template.replace('%d', String(checked));
+      };
+
+      const applyMode = () => {
+        const isSelectedMode = selectedMode instanceof HTMLInputElement && selectedMode.checked;
+        if (list instanceof HTMLElement) {
+          list.hidden = !isSelectedMode;
+        }
+        for (const checkbox of checkboxes) {
+          checkbox.disabled = !isSelectedMode;
+        }
+        for (const button of [selectAll, clear]) {
+          if (button instanceof HTMLButtonElement) {
+            button.disabled = !isSelectedMode || checkboxes.length === 0;
+          }
+        }
+        updateCount();
+      };
+
+      for (const radio of radios) {
+        radio.addEventListener('change', applyMode);
+      }
+      for (const checkbox of checkboxes) {
+        checkbox.addEventListener('change', updateCount);
+      }
+      if (selectAll instanceof HTMLButtonElement) {
+        selectAll.addEventListener('click', () => {
+          for (const checkbox of checkboxes) {
+            checkbox.checked = true;
+          }
+          updateCount();
+        });
+      }
+      if (clear instanceof HTMLButtonElement) {
+        clear.addEventListener('click', () => {
+          for (const checkbox of checkboxes) {
+            checkbox.checked = false;
+          }
+          updateCount();
+        });
+      }
+
+      applyMode();
+    }
+  };
+
   const enhanceReplacedPanel = (panel) => {
     if (!(panel instanceof Element)) {
       return;
@@ -543,7 +611,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     enhanceProfileControls(panel);
     enhanceRuleControls(panel);
+    enhanceNotificationTagControls(panel);
   };
+
+  enhanceProfileControls(document);
+  enhanceRuleControls(document);
+  enhanceNotificationTagControls(document);
 
   const updateQueueSnapshotValues = (snapshot) => {
     if (!snapshot || typeof snapshot !== 'object') {

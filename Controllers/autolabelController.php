@@ -788,6 +788,10 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 	 * @return list<string>
 	 */
 	private function requestNotificationTags(): array {
+		if (Minz_Request::paramString('notification_tag_mode') !== 'selected') {
+			return [];
+		}
+
 		$tags = $_POST['notification_tags'] ?? [];
 		if (!is_array($tags)) {
 			return [];
