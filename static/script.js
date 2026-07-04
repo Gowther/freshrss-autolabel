@@ -1,4 +1,4 @@
-window.__AutoLabelScriptVersion = '0.6.1-notification-tags-v1';
+window.__AutoLabelScriptVersion = '0.7.0-event-aggregation-v1';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -543,9 +543,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       root.dataset.autolabelControlsEnhanced = 'true';
-      const selectedMode = root.querySelector('input[name="notification_tag_mode"][value="selected"]');
-      const radios = Array.from(root.querySelectorAll('input[name="notification_tag_mode"]'));
-      const checkboxes = Array.from(root.querySelectorAll('input[name="notification_tags[]"]'));
+      const modeName = root.dataset.autolabelNotificationModeName || 'notification_tag_mode';
+      const tagsName = root.dataset.autolabelNotificationTagsName || 'notification_tags[]';
+      const radios = Array.from(root.querySelectorAll('input[type="radio"]')).filter((input) => input.name === modeName);
+      const selectedMode = radios.find((input) => input.value === 'selected') || null;
+      const checkboxes = Array.from(root.querySelectorAll('input[type="checkbox"]')).filter((input) => input.name === tagsName);
       const list = root.querySelector('[data-autolabel-notification-tag-list]');
       const count = root.querySelector('[data-autolabel-notification-tag-count]');
       const selectAll = root.querySelector('[data-autolabel-notification-tag-select-all]');

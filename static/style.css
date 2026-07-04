@@ -465,6 +465,17 @@ html[class*="theme_dark"] .autolabel-help--danger {
   padding: 0.8rem;
 }
 
+.autolabel-chip {
+  display: inline-flex;
+  align-items: center;
+  margin: 0.1rem 0.25rem 0.1rem 0;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  color: var(--autolabel-muted);
+  background: rgba(113, 113, 122, 0.14);
+  font-size: 0.85rem;
+}
+
 .btn--danger {
   border-color: #c63c3c;
   color: #a42a2a;

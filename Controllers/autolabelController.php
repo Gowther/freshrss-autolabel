@@ -70,6 +70,20 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		]);
 	}
 
+	public function eventAction(): void {
+		$this->requireUser();
+		$id = Minz_Request::paramString('id');
+		$digest = $this->extension->notificationStore()->eventDigest($id);
+		if (!is_array($digest)) {
+			Minz_Error::error(404);
+			return;
+		}
+
+		AutoLabelViewState::replace([
+			'event_digest' => $digest,
+		]);
+	}
+
 	public function saveProfileAction(): void {
 		$this->requireAdmin();
 		$redirect = ['c' => 'autolabel', 'a' => 'index'];
@@ -472,7 +486,9 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 		try {
 			$this->extension->notificationSettings()->saveFromPayload([
 				'enabled' => Minz_Request::paramBoolean('notifications_enabled'),
-				'tags' => $this->requestNotificationTags(),
+				'tags' => $this->requestNotificationTagsFor('notification'),
+				'bark_tags' => $this->requestNotificationTagsFor('bark'),
+				'email_tags' => $this->requestNotificationTagsFor('email'),
 				'bark_enabled' => Minz_Request::paramBoolean('bark_enabled'),
 				'bark_server_url' => Minz_Request::paramString('bark_server_url'),
 				'bark_device_key' => Minz_Request::paramString('bark_device_key'),
@@ -481,6 +497,14 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 				'email_enabled' => Minz_Request::paramBoolean('email_enabled'),
 				'email_to' => Minz_Request::paramString('email_to'),
 				'email_subject_prefix' => Minz_Request::paramString('email_subject_prefix'),
+				'event_enabled' => Minz_Request::paramBoolean('event_enabled'),
+				'event_tags' => $this->requestNotificationTagsFor('event'),
+				'event_profile_id' => Minz_Request::paramString('event_profile_id'),
+				'event_window_hours' => (int)Minz_Request::paramString('event_window_hours'),
+				'event_min_articles' => (int)Minz_Request::paramString('event_min_articles'),
+				'event_min_feeds' => (int)Minz_Request::paramString('event_min_feeds'),
+				'event_cooldown_hours' => (int)Minz_Request::paramString('event_cooldown_hours'),
+				'event_max_digests_per_run' => (int)Minz_Request::paramString('event_max_digests_per_run'),
 			]);
 			$message = _t('ext.auto_label.messages.notifications_saved');
 			if ($this->isAjaxRequest()) {
@@ -788,11 +812,18 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 	 * @return list<string>
 	 */
 	private function requestNotificationTags(): array {
-		if (Minz_Request::paramString('notification_tag_mode') !== 'selected') {
+		return $this->requestNotificationTagsFor('notification');
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function requestNotificationTagsFor(string $prefix): array {
+		if (Minz_Request::paramString($prefix . '_tag_mode') !== 'selected') {
 			return [];
 		}
 
-		$tags = $_POST['notification_tags'] ?? [];
+		$tags = $_POST[$prefix . '_tags'] ?? [];
 		if (!is_array($tags)) {
 			return [];
 		}

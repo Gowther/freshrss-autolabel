@@ -190,11 +190,14 @@ final class AutoLabelExtension extends Minz_Extension {
 	}
 
 	public function notifications(): AutoLabelNotificationService {
+		$http = new AutoLabelHttpClient();
 		return new AutoLabelNotificationService(
 			$this->notificationSettings(),
 			$this->notificationStore(),
 			$this->diagnostics(),
-			new AutoLabelHttpClient()
+			$http,
+			$this->systemProfiles(),
+			new AutoLabelProviderFactory($http)
 		);
 	}
 
