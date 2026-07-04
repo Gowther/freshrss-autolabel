@@ -1180,20 +1180,21 @@ final class AutoLabelNotificationService {
 			return;
 		}
 
-		$eventTags = [];
+		$triggerTags = [];
 		foreach ($newTags as $tag) {
 			if (!$this->tagIsEnabled($settings, $tag)) {
 				continue;
 			}
 
-			$eventTags[$tag] = $tag;
+			$triggerTags[$tag] = $tag;
 		}
-		$eventTags = array_values($eventTags);
-		if (count($eventTags) === 0) {
+		$triggerTags = array_values($triggerTags);
+		if (count($triggerTags) === 0) {
 			return;
 		}
 
-		$event = $this->buildEvent($entry, $eventTags, $results, $source);
+		$event = $this->buildEvent($entry, $newTags, $results, $source);
+		$event['trigger_tags'] = $triggerTags;
 		if (!empty($settings['email_enabled'])) {
 			$this->store->queueEmailEvent($event);
 		}

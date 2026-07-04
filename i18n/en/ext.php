@@ -145,8 +145,8 @@ return [
 				'sent_bark' => 'Bark dedupe keys',
 				'selected_count' => '%d selected',
 				'tag_mode' => [
-					'all' => 'Notify every new label',
-					'selected' => 'Only selected labels',
+					'all' => 'Trigger on any label',
+					'selected' => 'Trigger on selected labels',
 				],
 				'fields' => [
 					'enabled' => 'Enable notifications',
@@ -168,7 +168,7 @@ return [
 					'clear_tags' => 'Clear',
 				],
 				'help' => [
-					'tags' => 'Choose all labels for broad delivery, or switch to selected labels for high-priority notifications only.',
+					'tags' => 'Selected labels control whether a notification is sent. Each notification still shows every label newly added to that article.',
 					'no_tags' => 'Create labels before limiting notifications to selected labels.',
 					'bark' => 'Bark sends one immediate push per matched article, up to the per-run cap. The notification opens the source article URL.',
 					'email' => 'Email digests are sent when the queue becomes idle. Each article appears once with all matched tags and its source URL.',

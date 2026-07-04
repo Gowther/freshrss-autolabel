@@ -145,8 +145,8 @@ return [
 			'sent_bark' => 'Clés de déduplication Bark',
 			'selected_count' => '%d sélectionné(s)',
 			'tag_mode' => [
-				'all' => 'Notifier tous les nouveaux tags',
-				'selected' => 'Seulement les tags sélectionnés',
+				'all' => 'Déclencher sur tout tag',
+				'selected' => 'Déclencher sur les tags sélectionnés',
 			],
 			'fields' => [
 				'enabled' => 'Activer les notifications',
@@ -168,7 +168,7 @@ return [
 				'clear_tags' => 'Effacer',
 			],
 			'help' => [
-				'tags' => 'Choisissez tous les tags pour une diffusion large, ou limitez aux tags sélectionnés pour les notifications prioritaires.',
+				'tags' => 'Les tags sélectionnés déterminent si une notification est envoyée. Chaque notification affiche quand même tous les tags ajoutés à cet article.',
 				'no_tags' => 'Créez des tags avant de limiter les notifications à une sélection.',
 				'bark' => 'Bark envoie une notification immédiate par article correspondant, jusqu’à la limite par exécution. La notification ouvre l’URL source.',
 				'email' => 'Les résumés e-mail sont envoyés lorsque la file devient inactive. Chaque article apparaît une seule fois avec tous ses tags et son URL source.',
