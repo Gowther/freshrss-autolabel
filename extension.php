@@ -265,6 +265,11 @@ final class AutoLabelExtension extends Minz_Extension {
 		} catch (Throwable $throwable) {
 			Minz_Log::warning('AutoLabel failed while queueing a new entry: ' . $throwable->getMessage());
 		}
+		try {
+			$this->notifications()->recordEventCandidate($entry, 'reception');
+		} catch (Throwable $throwable) {
+			Minz_Log::warning('AutoLabel failed while recording an event candidate: ' . $throwable->getMessage());
+		}
 
 		return $entry;
 	}

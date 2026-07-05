@@ -887,9 +887,9 @@ final class AutoLabelNotificationSettingsRepository {
 			'email_to' => $this->defaultEmailTo(),
 			'email_subject_prefix' => '[AutoLabel]',
 			'event_enabled' => false,
-			'event_tags' => [],
 			'event_profile_id' => '',
 			'event_window_hours' => 6,
+			'event_run_interval_minutes' => 10,
 			'event_min_articles' => 5,
 			'event_cooldown_hours' => 12,
 			'event_max_digests_per_run' => 3,
@@ -903,7 +903,6 @@ final class AutoLabelNotificationSettingsRepository {
 	private function normalizeStoredSettings(array $settings): array {
 		$hasBarkTags = array_key_exists('bark_tags', $settings);
 		$hasEmailTags = array_key_exists('email_tags', $settings);
-		$hasEventTags = array_key_exists('event_tags', $settings);
 		$settings = array_merge($this->defaultSettings(), $settings);
 		$settings['enabled'] = (bool)$settings['enabled'];
 		$settings['tags'] = $this->normalizeTags($settings['tags'] ?? []);
@@ -927,9 +926,10 @@ final class AutoLabelNotificationSettingsRepository {
 			$settings['email_subject_prefix'] = '[AutoLabel]';
 		}
 		$settings['event_enabled'] = (bool)$settings['event_enabled'];
-		$settings['event_tags'] = $this->normalizeTags($hasEventTags ? $settings['event_tags'] : $settings['tags']);
+		unset($settings['event_tags']);
 		$settings['event_profile_id'] = trim((string)($settings['event_profile_id'] ?? ''));
 		$settings['event_window_hours'] = max(1, min(168, (int)$settings['event_window_hours']));
+		$settings['event_run_interval_minutes'] = max(1, min(1440, (int)$settings['event_run_interval_minutes']));
 		$settings['event_min_articles'] = max(2, min(200, (int)$settings['event_min_articles']));
 		$settings['event_cooldown_hours'] = max(1, min(720, (int)$settings['event_cooldown_hours']));
 		$settings['event_max_digests_per_run'] = max(1, min(10, (int)$settings['event_max_digests_per_run']));
@@ -999,6 +999,7 @@ final class AutoLabelNotificationStore {
 	private const MAX_EVENT_DIGESTS = 200;
 	private const MAX_SENT_KEYS = 5000;
 	private const SENT_TTL_SECONDS = 2592000;
+	private const EVENT_CANDIDATE_TTL_SECONDS = 604800;
 
 	/** @var AutoLabelExtension */
 	private $extension;
@@ -1008,7 +1009,7 @@ final class AutoLabelNotificationStore {
 	}
 
 	/**
-	 * @return array{pending_email:int,event_candidates:int,event_digests:int,sent_email:int,sent_bark:int,sent_events:int,last_delivery:array<string,mixed>|null}
+	 * @return array{pending_email:int,event_candidates:int,event_digests:int,sent_email:int,sent_bark:int,sent_events:int,last_event_run_at:int,last_delivery:array<string,mixed>|null}
 	 */
 	public function summary(): array {
 		$data = $this->read();
@@ -1019,6 +1020,7 @@ final class AutoLabelNotificationStore {
 			'sent_email' => count($data['sent_email']),
 			'sent_bark' => count($data['sent_bark']),
 			'sent_events' => count($data['sent_events']),
+			'last_event_run_at' => (int)($data['last_event_run_at'] ?? 0),
 			'last_delivery' => is_array($data['last_delivery'] ?? null) ? $data['last_delivery'] : null,
 		];
 	}
@@ -1060,9 +1062,16 @@ final class AutoLabelNotificationStore {
 		}
 
 		$data = $this->read();
+		$cutoff = time() - self::EVENT_CANDIDATE_TTL_SECONDS;
 		$candidates = array_values(array_filter(
 			$data['event_candidates'],
-			static fn (array $event): bool => (string)($event['key'] ?? '') !== $key
+			static function (array $event) use ($key, $cutoff): bool {
+				if ((string)($event['key'] ?? '') === $key) {
+					return false;
+				}
+				$timestamp = strtotime((string)($event['at'] ?? ''));
+				return $timestamp !== false && $timestamp >= $cutoff;
+			}
 		));
 		array_unshift($candidates, $candidate);
 		$data['event_candidates'] = array_slice($candidates, 0, self::MAX_EVENT_CANDIDATES);
@@ -1084,6 +1093,18 @@ final class AutoLabelNotificationStore {
 		}
 
 		return $candidates;
+	}
+
+	public function eventDigestRunDue(int $intervalMinutes): bool {
+		$intervalSeconds = max(1, $intervalMinutes) * 60;
+		$lastRunAt = (int)($this->read()['last_event_run_at'] ?? 0);
+		return $lastRunAt <= 0 || $lastRunAt <= time() - $intervalSeconds;
+	}
+
+	public function markEventDigestRun(): void {
+		$data = $this->read();
+		$data['last_event_run_at'] = time();
+		$this->write($data);
 	}
 
 	/**
@@ -1179,7 +1200,7 @@ final class AutoLabelNotificationStore {
 	}
 
 	/**
-	 * @return array{pending_email:list<array<string,mixed>>,event_candidates:list<array<string,mixed>>,event_digests:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,sent_events:array<string,int>,last_delivery:array<string,mixed>|null}
+	 * @return array{pending_email:list<array<string,mixed>>,event_candidates:list<array<string,mixed>>,event_digests:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,sent_events:array<string,int>,last_event_run_at:int,last_delivery:array<string,mixed>|null}
 	 */
 	private function read(): array {
 		$content = $this->extension->readUserDataFile(self::NOTIFICATION_FILE);
@@ -1199,12 +1220,13 @@ final class AutoLabelNotificationStore {
 			'sent_email' => $this->pruneSentMap(is_array($data['sent_email'] ?? null) ? $data['sent_email'] : []),
 			'sent_bark' => $this->pruneSentMap(is_array($data['sent_bark'] ?? null) ? $data['sent_bark'] : []),
 			'sent_events' => $this->pruneSentMap(is_array($data['sent_events'] ?? null) ? $data['sent_events'] : []),
+			'last_event_run_at' => max(0, (int)($data['last_event_run_at'] ?? 0)),
 			'last_delivery' => is_array($data['last_delivery'] ?? null) ? $data['last_delivery'] : null,
 		];
 	}
 
 	/**
-	 * @return array{pending_email:list<array<string,mixed>>,event_candidates:list<array<string,mixed>>,event_digests:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,sent_events:array<string,int>,last_delivery:array<string,mixed>|null}
+	 * @return array{pending_email:list<array<string,mixed>>,event_candidates:list<array<string,mixed>>,event_digests:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,sent_events:array<string,int>,last_event_run_at:int,last_delivery:array<string,mixed>|null}
 	 */
 	private function emptyData(): array {
 		return [
@@ -1214,12 +1236,13 @@ final class AutoLabelNotificationStore {
 			'sent_email' => [],
 			'sent_bark' => [],
 			'sent_events' => [],
+			'last_event_run_at' => 0,
 			'last_delivery' => null,
 		];
 	}
 
 	/**
-	 * @param array{pending_email:list<array<string,mixed>>,event_candidates:list<array<string,mixed>>,event_digests:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,sent_events:array<string,int>,last_delivery:array<string,mixed>|null} $data
+	 * @param array{pending_email:list<array<string,mixed>>,event_candidates:list<array<string,mixed>>,event_digests:list<array<string,mixed>>,sent_email:array<string,int>,sent_bark:array<string,int>,sent_events:array<string,int>,last_event_run_at:int,last_delivery:array<string,mixed>|null} $data
 	 */
 	private function write(array $data): void {
 		$this->extension->writeUserDataFile(
@@ -1311,7 +1334,7 @@ final class AutoLabelNotificationService {
 
 		$emailTriggerTags = !empty($settings['email_enabled']) ? $this->matchingChannelTags($settings, 'email_tags', $newTags) : [];
 		$barkTriggerTags = !empty($settings['bark_enabled']) ? $this->matchingChannelTags($settings, 'bark_tags', $newTags) : [];
-		$eventTriggerTags = !empty($settings['event_enabled']) ? $this->matchingChannelTags($settings, 'event_tags', $newTags) : [];
+		$eventTriggerTags = !empty($settings['event_enabled']) ? array_values($newTags) : [];
 		if (count($emailTriggerTags) === 0 && count($barkTriggerTags) === 0 && count($eventTriggerTags) === 0) {
 			return;
 		}
@@ -1330,6 +1353,15 @@ final class AutoLabelNotificationService {
 			$event['bark_trigger_tags'] = $barkTriggerTags;
 			$this->sendBarkEventIfAllowed($settings, $event);
 		}
+	}
+
+	public function recordEventCandidate(FreshRSS_Entry $entry, string $source): void {
+		$settings = $this->settings->settings();
+		if (empty($settings['enabled']) || empty($settings['event_enabled'])) {
+			return;
+		}
+
+		$this->store->queueEventCandidate($this->buildEvent($entry, [], [], $source));
 	}
 
 	/**
@@ -1397,12 +1429,16 @@ final class AutoLabelNotificationService {
 		if (empty($settings['enabled']) || empty($settings['event_enabled'])) {
 			return ['sent' => false, 'count' => 0];
 		}
+		if (!$this->store->eventDigestRunDue((int)$settings['event_run_interval_minutes'])) {
+			return ['sent' => false, 'count' => 0];
+		}
 
 		$candidates = $this->store->recentEventCandidates((int)$settings['event_window_hours']);
 		if (count($candidates) < (int)$settings['event_min_articles']) {
 			return ['sent' => false, 'count' => 0];
 		}
 		$candidates = array_slice($candidates, 0, 80);
+		$this->store->markEventDigestRun();
 
 		$profile = $this->eventAggregationProfile($settings);
 		if (!is_array($profile) || $this->providers === null) {
@@ -1576,7 +1612,7 @@ final class AutoLabelNotificationService {
 	 */
 	private function buildEvent(FreshRSS_Entry $entry, array $tags, array $results, string $source): array {
 		$tags = $this->normalizeTags($tags);
-		$primaryTag = $tags[0] ?? 'AutoLabel';
+		$primaryTag = $tags[0] ?? '';
 		$details = $this->matchingDetailsForTags($tags, $results);
 		$url = method_exists($entry, 'link') ? trim(htmlspecialchars_decode((string)$entry->link(true), ENT_QUOTES | ENT_HTML5)) : '';
 		$feedTitle = '';
@@ -1594,11 +1630,20 @@ final class AutoLabelNotificationService {
 			'title' => trim((string)$entry->title()),
 			'feed' => $feedTitle,
 			'url' => $url,
+			'published_at' => method_exists($entry, 'date') ? (int)$entry->date(true) : 0,
+			'excerpt' => $this->entryExcerpt($entry),
 			'entry_id' => method_exists($entry, 'id') ? (int)$entry->id() : 0,
 			'feed_id' => method_exists($entry, 'feedId') ? (int)$entry->feedId() : 0,
 			'rule_names' => $details['rule_names'],
 			'reasons' => $details['reasons'],
 		];
+	}
+
+	private function entryExcerpt(FreshRSS_Entry $entry): string {
+		$content = method_exists($entry, 'content') ? (string)$entry->content(false) : '';
+		$content = html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+		$content = preg_replace('/\s+/u', ' ', $content) ?? $content;
+		return $this->truncate(trim($content), 1200);
 	}
 
 	/**
@@ -1674,7 +1719,7 @@ final class AutoLabelNotificationService {
 		$url = $serverUrl . '/push';
 		$payload = [
 			'device_key' => $deviceKey,
-			'title' => $this->truncate($this->eventTagSummary($event) . ' ' . (string)$event['title'], 120),
+			'title' => $this->truncate(trim($this->eventTagSummary($event) . ' ' . (string)$event['title']), 120),
 			'body' => $this->barkBody($event),
 			'url' => (string)($event['url'] ?? ''),
 			'group' => (string)($settings['bark_group'] ?? 'AutoLabel'),
@@ -1843,7 +1888,7 @@ final class AutoLabelNotificationService {
 			$tags = $this->normalizeTags((string)($event['tag'] ?? ''));
 		}
 
-		return count($tags) > 0 ? $tags : ['AutoLabel'];
+		return $tags;
 	}
 
 	/**
@@ -1891,12 +1936,13 @@ final class AutoLabelNotificationService {
 				'feed' => $this->truncate(trim((string)($candidate['feed'] ?? '')), 120),
 				'tags' => $this->eventTags($candidate),
 				'reason' => $this->truncate((string)($reasons[0] ?? ''), 260),
+				'excerpt' => $this->truncate(trim((string)($candidate['excerpt'] ?? '')), 700),
 				'url' => trim((string)($candidate['url'] ?? '')),
 			];
 		}
 
 		return implode("\n", [
-			'Cluster the following AutoLabel notification candidates from the last ' . (int)$settings['event_window_hours'] . ' hour(s).',
+			'Cluster the following recent RSS articles from the last ' . (int)$settings['event_window_hours'] . ' hour(s).',
 			'Only create an event when at least ' . (int)$settings['event_min_articles'] . ' articles clearly describe the same concrete thing.',
 			'Articles may come from the same feed; group them when they describe the same concrete event, development, or repeated signal. Do not group articles merely because they share a broad topic or tag.',
 			'Use the zero-based article index values exactly as provided.',
@@ -1954,21 +2000,6 @@ final class AutoLabelNotificationService {
 		}
 
 		return array_values($articles);
-	}
-
-	/**
-	 * @param list<array<string,mixed>> $articles
-	 */
-	private function distinctFeedCount(array $articles): int {
-		$feeds = [];
-		foreach ($articles as $article) {
-			$feed = trim((string)($article['feed'] ?? ''));
-			if ($feed !== '') {
-				$feeds[$feed] = true;
-			}
-		}
-
-		return count($feeds);
 	}
 
 	/**
@@ -2144,9 +2175,6 @@ final class AutoLabelNotificationService {
 	}
 
 	private function entryKey(FreshRSS_Entry $entry): string {
-		if (method_exists($entry, 'id') && (int)$entry->id() > 0) {
-			return 'id:' . (string)$entry->id();
-		}
 		if (method_exists($entry, 'guid')) {
 			$guid = trim((string)$entry->guid());
 			if ($guid !== '') {
@@ -2157,7 +2185,14 @@ final class AutoLabelNotificationService {
 		$link = method_exists($entry, 'link') ? trim((string)$entry->link(true)) : '';
 		$title = method_exists($entry, 'title') ? trim((string)$entry->title()) : '';
 		$date = method_exists($entry, 'date') ? (string)$entry->date(true) : '';
-		return hash('sha256', implode('|', [$link, $title, $date]));
+		if ($link !== '' || $title !== '' || $date !== '') {
+			return hash('sha256', implode('|', [$link, $title, $date]));
+		}
+		if (method_exists($entry, 'id') && (int)$entry->id() > 0) {
+			return 'id:' . (string)$entry->id();
+		}
+
+		return hash('sha256', spl_object_hash($entry));
 	}
 
 	private function siteUrl(): string {

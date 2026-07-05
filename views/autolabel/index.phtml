@@ -713,7 +713,6 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 							<input type="checkbox" name="event_enabled" value="1" <?= !empty($notificationSettings['event_enabled']) ? 'checked' : '' ?> />
 							<span><?= _t('ext.auto_label.notifications.fields.event_enabled') ?></span>
 						</label>
-						<?php $renderNotificationTagPicker('event', _t('ext.auto_label.notifications.fields.event_tags'), $notificationTagsFor('event_tags')); ?>
 						<label>
 							<span><?= _t('ext.auto_label.notifications.fields.event_profile_id') ?></span>
 							<select name="event_profile_id">
@@ -730,6 +729,10 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 							<label>
 								<span><?= _t('ext.auto_label.notifications.fields.event_window_hours') ?></span>
 								<input type="number" name="event_window_hours" min="1" max="168" value="<?= $escape((string)($notificationSettings['event_window_hours'] ?? 6)) ?>" />
+							</label>
+							<label>
+								<span><?= _t('ext.auto_label.notifications.fields.event_run_interval_minutes') ?></span>
+								<input type="number" name="event_run_interval_minutes" min="1" max="1440" value="<?= $escape((string)($notificationSettings['event_run_interval_minutes'] ?? 10)) ?>" />
 							</label>
 							<label>
 								<span><?= _t('ext.auto_label.notifications.fields.event_min_articles') ?></span>
