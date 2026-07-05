@@ -244,7 +244,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						</label>
 					</div>
 
-					<div class="autolabel-actions">
+					<div class="autolabel-actions autolabel-actions--sticky">
 						<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.profile.actions.save') ?></button>
 						<?php if (($profileForm['id'] ?? '') !== ''): ?>
 							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-profiles" data-autolabel-panel-link="profiles"><?= _t('ext.auto_label.misc.cancel') ?></a>
@@ -404,7 +404,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						</label>
 					</div>
 
-					<div class="autolabel-actions">
+					<div class="autolabel-actions autolabel-actions--sticky">
 						<button class="btn btn--primary" type="submit" <?= count($availableTags) === 0 ? 'disabled' : '' ?>><?= _t('ext.auto_label.rule.actions.save') ?></button>
 						<?php if (($ruleForm['id'] ?? '') !== ''): ?>
 							<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-rules" data-autolabel-panel-link="rules"><?= _t('ext.auto_label.misc.cancel') ?></a>
@@ -690,7 +690,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.email') ?></p>
 					</div>
 
-					<div class="autolabel-actions">
+					<div class="autolabel-actions autolabel-actions--sticky">
 						<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.notifications.actions.save') ?></button>
 					</div>
 				</form>
