@@ -21,6 +21,15 @@ $diagnostics = is_array($viewState['diagnostics'] ?? null) ? $viewState['diagnos
 $diagnosticsEnabled = !empty($viewState['diagnostics_enabled']);
 $notificationSettings = is_array($viewState['notification_settings'] ?? null) ? $viewState['notification_settings'] : [];
 $notificationSummary = is_array($viewState['notification_summary'] ?? null) ? $viewState['notification_summary'] : [];
+$eventAggregationStatus = is_array($viewState['event_aggregation_status'] ?? null) ? $viewState['event_aggregation_status'] : [];
+$formatEventTimestamp = static function ($value): string {
+	$timestamp = (int)$value;
+	return $timestamp > 0 ? date('Y-m-d H:i:s', $timestamp) : '-';
+};
+$eventNextRunLabel = !empty($eventAggregationStatus['event_run_due'])
+	? _t('ext.auto_label.notifications.event_now')
+	: $formatEventTimestamp($eventAggregationStatus['next_event_run_at'] ?? 0);
+$eventPromptPreview = trim((string)($eventAggregationStatus['prompt_preview'] ?? ''));
 $notificationTagsFor = static function (string $key) use ($notificationSettings): array {
 	return is_array($notificationSettings[$key] ?? null) ? $notificationSettings[$key] : [];
 };
@@ -725,6 +734,11 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 								<?php endforeach; ?>
 							</select>
 						</label>
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.event_prompt_instructions') ?></span>
+							<textarea name="event_prompt_instructions" rows="5"><?= $escape($notificationSettings['event_prompt_instructions'] ?? '') ?></textarea>
+						</label>
+						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.event_prompt_instructions') ?></p>
 						<div class="autolabel-form__columns">
 							<label>
 								<span><?= _t('ext.auto_label.notifications.fields.event_window_hours') ?></span>
@@ -764,6 +778,24 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 				<p><?= _t('ext.auto_label.notifications.sent_email') ?>: <?= $escape((string)($notificationSummary['sent_email'] ?? 0)) ?></p>
 				<p><?= _t('ext.auto_label.notifications.sent_bark') ?>: <?= $escape((string)($notificationSummary['sent_bark'] ?? 0)) ?></p>
 				<p><?= _t('ext.auto_label.notifications.sent_events') ?>: <?= $escape((string)($notificationSummary['sent_events'] ?? 0)) ?></p>
+				<div class="autolabel-subsection">
+					<h3><?= _t('ext.auto_label.notifications.event_status') ?></h3>
+					<p><?= _t('ext.auto_label.notifications.event_total_candidates') ?>: <?= $escape((string)($eventAggregationStatus['total_candidates'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_window_candidates') ?>: <?= $escape((string)($eventAggregationStatus['window_candidates'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_enriched_candidates') ?>: <?= $escape((string)($eventAggregationStatus['enriched_candidates'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_feed_count') ?>: <?= $escape((string)($eventAggregationStatus['feed_count'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_oldest_candidate') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['oldest_candidate_at'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_latest_candidate') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['latest_candidate_at'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_last_run_at') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['last_event_run_at'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_next_run_at') ?>: <?= $escape($eventNextRunLabel) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_recent_digests') ?>: <?= $escape((string)($eventAggregationStatus['event_digest_count'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_cooldown_keys') ?>: <?= $escape((string)($eventAggregationStatus['cooldown_event_keys'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_prompt_candidate_count') ?>: <?= $escape((string)($eventAggregationStatus['prompt_candidate_count'] ?? 0)) ?></p>
+					<details>
+						<summary><?= _t('ext.auto_label.notifications.event_prompt_preview') ?></summary>
+						<pre class="autolabel-pre autolabel-pre--prompt"><?= $escape($eventPromptPreview !== '' ? $eventPromptPreview : _t('ext.auto_label.notifications.event_no_prompt_preview')) ?></pre>
+					</details>
+				</div>
 				<?php if (is_array($notificationSummary['last_delivery'] ?? null)): ?>
 					<pre class="autolabel-pre"><?= $escape(json_encode($notificationSummary['last_delivery'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
 				<?php endif; ?>

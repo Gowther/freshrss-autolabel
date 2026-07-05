@@ -50,6 +50,7 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 			'diagnostics_enabled' => $this->extension->diagnosticsEnabled(),
 			'notification_settings' => $this->extension->notificationSettings()->settings(),
 			'notification_summary' => $this->extension->notificationStore()->summary(),
+			'event_aggregation_status' => $this->extension->notifications()->eventAggregationStatus(),
 			'queue_snapshot' => $this->extension->queueStore()->snapshot(),
 			'queue_concurrency_available' => $this->extension->engine()->supportsConcurrentWindow(),
 			'manual_queue_run' => $this->extension->queueStore()->manualRun(),
@@ -504,6 +505,7 @@ final class FreshExtension_autolabel_Controller extends FreshRSS_ActionControlle
 				'event_min_articles' => (int)Minz_Request::paramString('event_min_articles'),
 				'event_cooldown_hours' => (int)Minz_Request::paramString('event_cooldown_hours'),
 				'event_max_digests_per_run' => (int)Minz_Request::paramString('event_max_digests_per_run'),
+				'event_prompt_instructions' => Minz_Request::paramString('event_prompt_instructions'),
 			]);
 			$message = _t('ext.auto_label.messages.notifications_saved');
 			if ($this->isAjaxRequest()) {

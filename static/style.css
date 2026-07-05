@@ -479,6 +479,11 @@ html[class*="theme_dark"] .autolabel-help--danger {
   padding: 0.8rem;
 }
 
+.autolabel-pre--prompt {
+  max-height: 24rem;
+  overflow: auto;
+}
+
 .autolabel-chip {
   display: inline-flex;
   align-items: center;

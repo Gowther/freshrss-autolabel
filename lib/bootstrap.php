@@ -893,6 +893,7 @@ final class AutoLabelNotificationSettingsRepository {
 			'event_min_articles' => 5,
 			'event_cooldown_hours' => 12,
 			'event_max_digests_per_run' => 3,
+			'event_prompt_instructions' => '',
 		];
 	}
 
@@ -933,6 +934,7 @@ final class AutoLabelNotificationSettingsRepository {
 		$settings['event_min_articles'] = max(2, min(200, (int)$settings['event_min_articles']));
 		$settings['event_cooldown_hours'] = max(1, min(720, (int)$settings['event_cooldown_hours']));
 		$settings['event_max_digests_per_run'] = max(1, min(10, (int)$settings['event_max_digests_per_run']));
+		$settings['event_prompt_instructions'] = $this->normalizePromptInstructions($settings['event_prompt_instructions'] ?? '');
 
 		return $settings;
 	}
@@ -990,6 +992,16 @@ final class AutoLabelNotificationSettingsRepository {
 
 		return '';
 	}
+
+	private function normalizePromptInstructions($value): string {
+		$value = trim((string)$value);
+		$value = preg_replace("/\r\n?/", "\n", $value) ?? $value;
+		if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+			return mb_strlen($value, 'UTF-8') > 4000 ? mb_substr($value, 0, 4000, 'UTF-8') : $value;
+		}
+
+		return strlen($value) > 4000 ? substr($value, 0, 4000) : $value;
+	}
 }
 
 final class AutoLabelNotificationStore {
@@ -1022,6 +1034,62 @@ final class AutoLabelNotificationStore {
 			'sent_events' => count($data['sent_events']),
 			'last_event_run_at' => (int)($data['last_event_run_at'] ?? 0),
 			'last_delivery' => is_array($data['last_delivery'] ?? null) ? $data['last_delivery'] : null,
+		];
+	}
+
+	/**
+	 * @return array<string,mixed>
+	 */
+	public function eventAggregationStatus(int $windowHours, int $intervalMinutes): array {
+		$data = $this->read();
+		$windowHours = max(1, $windowHours);
+		$intervalSeconds = max(1, $intervalMinutes) * 60;
+		$cutoff = time() - $windowHours * 3600;
+		$windowCandidates = [];
+		$feeds = [];
+		$enrichedCount = 0;
+		$oldestAt = 0;
+		$latestAt = 0;
+
+		foreach ($data['event_candidates'] as $candidate) {
+			$timestamp = strtotime((string)($candidate['at'] ?? ''));
+			if ($timestamp === false || $timestamp < $cutoff) {
+				continue;
+			}
+			$windowCandidates[] = $candidate;
+			if ($oldestAt === 0 || $timestamp < $oldestAt) {
+				$oldestAt = $timestamp;
+			}
+			if ($timestamp > $latestAt) {
+				$latestAt = $timestamp;
+			}
+
+			$feed = trim((string)($candidate['feed'] ?? ''));
+			if ($feed !== '') {
+				$feeds[$feed] = true;
+			}
+			$tags = is_array($candidate['tags'] ?? null) ? array_filter($candidate['tags']) : [];
+			$reasons = is_array($candidate['reasons'] ?? null) ? array_filter($candidate['reasons']) : [];
+			$ruleNames = is_array($candidate['rule_names'] ?? null) ? array_filter($candidate['rule_names']) : [];
+			if (count($tags) > 0 || count($reasons) > 0 || count($ruleNames) > 0) {
+				++$enrichedCount;
+			}
+		}
+
+		$lastRunAt = (int)($data['last_event_run_at'] ?? 0);
+		$nextRunAt = $lastRunAt > 0 ? $lastRunAt + $intervalSeconds : 0;
+		return [
+			'total_candidates' => count($data['event_candidates']),
+			'window_candidates' => count($windowCandidates),
+			'enriched_candidates' => $enrichedCount,
+			'feed_count' => count($feeds),
+			'oldest_candidate_at' => $oldestAt,
+			'latest_candidate_at' => $latestAt,
+			'last_event_run_at' => $lastRunAt,
+			'next_event_run_at' => $nextRunAt,
+			'event_run_due' => $lastRunAt <= 0 || $lastRunAt <= time() - $intervalSeconds,
+			'event_digest_count' => count($data['event_digests']),
+			'cooldown_event_keys' => count($data['sent_events']),
 		];
 	}
 
@@ -1365,6 +1433,26 @@ final class AutoLabelNotificationService {
 	}
 
 	/**
+	 * @return array<string,mixed>
+	 */
+	public function eventAggregationStatus(): array {
+		$settings = $this->settings->settings();
+		$windowHours = (int)$settings['event_window_hours'];
+		$candidates = $this->store->recentEventCandidates($windowHours);
+		$promptCandidates = array_slice($candidates, 0, 80);
+		$status = $this->store->eventAggregationStatus($windowHours, (int)$settings['event_run_interval_minutes']);
+		$status['prompt_candidate_count'] = count($promptCandidates);
+		$status['prompt_preview'] = implode("\n\n", [
+			'SYSTEM:',
+			$this->eventAggregationSystemPrompt(),
+			'USER:',
+			$this->eventAggregationPrompt($promptCandidates, $settings),
+		]);
+
+		return $status;
+	}
+
+	/**
 	 * @return array{sent:bool,count:int,error?:string}
 	 */
 	public function flushEmailDigest(): array {
@@ -1454,7 +1542,7 @@ final class AutoLabelNotificationService {
 			$provider = $this->providers->create((string)$profile['provider']);
 			$request = $provider->buildTextRequest(
 				$profile,
-				'You cluster RSS articles into real-world events. Return JSON only in the form {"events":[{"event_key":"stable-short-key","title":"short event title","summary":"one sentence","article_indexes":[0,1],"importance":"high|medium|low"}]}. Only group articles that describe the same concrete event, announcement, incident, release, policy change, or trend signal.',
+				$this->eventAggregationSystemPrompt(),
 				$this->eventAggregationPrompt($candidates, $settings),
 				2400
 			);
@@ -1475,17 +1563,21 @@ final class AutoLabelNotificationService {
 		}
 
 		$sent = 0;
+		$skippedSmallGroups = 0;
+		$skippedCooldown = 0;
 		foreach ($groups as $group) {
 			if ($sent >= (int)$settings['event_max_digests_per_run']) {
 				break;
 			}
 			$articles = $this->articlesForEventGroup($group, $candidates);
 			if (count($articles) < (int)$settings['event_min_articles']) {
+				++$skippedSmallGroups;
 				continue;
 			}
 
 			$eventKey = $this->eventFingerprint($group, $articles);
 			if ($this->store->hasEventSent($eventKey, (int)$settings['event_cooldown_hours'])) {
+				++$skippedCooldown;
 				continue;
 			}
 
@@ -1500,13 +1592,14 @@ final class AutoLabelNotificationService {
 			++$sent;
 		}
 
-		if ($sent > 0) {
-			$this->diagnostics->append([
-				'type' => 'notification_event_digest',
-				'count' => $sent,
-				'candidate_count' => count($candidates),
-			]);
-		}
+		$this->diagnostics->append([
+			'type' => $sent > 0 ? 'notification_event_digest' : 'notification_event_checked',
+			'count' => $sent,
+			'candidate_count' => count($candidates),
+			'group_count' => count($groups),
+			'skipped_small_groups' => $skippedSmallGroups,
+			'skipped_cooldown' => $skippedCooldown,
+		]);
 
 		return ['sent' => $sent > 0, 'count' => $sent];
 	}
@@ -1922,6 +2015,10 @@ final class AutoLabelNotificationService {
 		return null;
 	}
 
+	private function eventAggregationSystemPrompt(): string {
+		return 'You cluster RSS articles into real-world events. Return JSON only in the form {"events":[{"event_key":"stable-short-key","title":"short event title","summary":"one sentence","article_indexes":[0,1],"importance":"high|medium|low"}]}. Only group articles that describe the same concrete event, announcement, incident, release, policy change, or trend signal.';
+	}
+
 	/**
 	 * @param list<array<string,mixed>> $candidates
 	 * @param array<string,mixed> $settings
@@ -1941,14 +2038,21 @@ final class AutoLabelNotificationService {
 			];
 		}
 
-		return implode("\n", [
+		$lines = [
 			'Cluster the following recent RSS articles from the last ' . (int)$settings['event_window_hours'] . ' hour(s).',
 			'Only create an event when at least ' . (int)$settings['event_min_articles'] . ' articles clearly describe the same concrete thing.',
 			'Articles may come from the same feed; group them when they describe the same concrete event, development, or repeated signal. Do not group articles merely because they share a broad topic or tag.',
 			'Use the zero-based article index values exactly as provided.',
 			'Return JSON only.',
-			json_encode(['articles' => $articles], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-		]);
+		];
+		$instructions = trim((string)($settings['event_prompt_instructions'] ?? ''));
+		if ($instructions !== '') {
+			$lines[] = 'Additional user instructions, only when they do not conflict with the rules above:';
+			$lines[] = $instructions;
+		}
+		$lines[] = json_encode(['articles' => $articles], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+		return implode("\n", $lines);
 	}
 
 	/**
