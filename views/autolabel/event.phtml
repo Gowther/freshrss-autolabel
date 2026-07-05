@@ -1,0 +1,67 @@
+<?php
+declare(strict_types=1);
+
+require_once dirname(__DIR__, 2) . '/lib/bootstrap.php';
+
+$viewState = AutoLabelViewState::all();
+$event = is_array($viewState['event_digest'] ?? null) ? $viewState['event_digest'] : [];
+$escape = static function ($value): string {
+	return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+};
+$articles = is_array($event['articles'] ?? null) ? array_values(array_filter($event['articles'], 'is_array')) : [];
+$feeds = is_array($event['feeds'] ?? null) ? array_values(array_filter(array_map('strval', $event['feeds']))) : [];
+$tags = is_array($event['tags'] ?? null) ? array_values(array_filter(array_map('strval', $event['tags']))) : [];
+?>
+
+<div class="post content autolabel-page">
+	<header class="autolabel-header">
+		<div>
+			<p class="autolabel-kicker"><?= _t('ext.auto_label.notifications.event_detail.kicker') ?></p>
+			<h1><?= $escape($event['event_title'] ?? $event['title'] ?? _t('ext.auto_label.notifications.event_detail.title')) ?></h1>
+			<p><?= $escape($event['summary'] ?? '') ?></p>
+		</div>
+		<a class="btn" href="<?= _url('autolabel', 'index') ?>#autolabel-notifications"><?= _t('ext.auto_label.notifications.event_detail.back') ?></a>
+	</header>
+
+	<section class="autolabel-card">
+		<h2><?= _t('ext.auto_label.notifications.event_detail.summary') ?></h2>
+		<p><?= _t('ext.auto_label.notifications.event_detail.article_count') ?>: <?= $escape((string)count($articles)) ?></p>
+		<p><?= _t('ext.auto_label.notifications.event_detail.feed_count') ?>: <?= $escape((string)count($feeds)) ?></p>
+		<?php if (count($tags) > 0): ?>
+			<p><?= _t('ext.auto_label.notifications.event_detail.tags') ?>:
+				<?php foreach ($tags as $tag): ?>
+					<span class="autolabel-chip">#<?= $escape($tag) ?></span>
+				<?php endforeach; ?>
+			</p>
+		<?php endif; ?>
+		<?php if (count($feeds) > 0): ?>
+			<p><?= _t('ext.auto_label.notifications.event_detail.feeds') ?>: <?= $escape(implode(', ', $feeds)) ?></p>
+		<?php endif; ?>
+	</section>
+
+	<section class="autolabel-card">
+		<h2><?= _t('ext.auto_label.notifications.event_detail.articles') ?></h2>
+		<?php if (count($articles) === 0): ?>
+			<p><?= _t('ext.auto_label.misc.none_yet') ?></p>
+		<?php else: ?>
+			<div class="autolabel-list">
+				<?php foreach ($articles as $article): ?>
+					<article class="autolabel-list__item">
+						<div class="autolabel-list__header">
+							<strong><?= $escape($article['title'] ?? 'Untitled') ?></strong>
+							<span><?= $escape($article['feed'] ?? '') ?></span>
+						</div>
+						<?php $url = trim((string)($article['url'] ?? '')); ?>
+						<?php if ($url !== ''): ?>
+							<p><a href="<?= $escape($url) ?>" target="_blank" rel="noopener noreferrer"><?= $escape($url) ?></a></p>
+						<?php endif; ?>
+						<?php $reasons = is_array($article['reasons'] ?? null) ? array_values(array_filter(array_map('strval', $article['reasons']))) : []; ?>
+						<?php if (count($reasons) > 0): ?>
+							<p><?= $escape($reasons[0]) ?></p>
+						<?php endif; ?>
+					</article>
+				<?php endforeach; ?>
+			</div>
+		<?php endif; ?>
+	</section>
+</div>

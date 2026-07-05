@@ -12,6 +12,7 @@ $ruleForm = is_array($viewState['rule_form'] ?? null) ? $viewState['rule_form'] 
 $providers = is_array($viewState['providers'] ?? null) ? $viewState['providers'] : [];
 $profileModes = is_array($viewState['profile_modes'] ?? null) ? $viewState['profile_modes'] : [];
 $profiles = is_array($viewState['profiles'] ?? null) ? $viewState['profiles'] : [];
+$enabledProfiles = is_array($viewState['enabled_profiles'] ?? null) ? $viewState['enabled_profiles'] : [];
 $profilesById = is_array($viewState['profiles_by_id'] ?? null) ? $viewState['profiles_by_id'] : [];
 $availableTags = is_array($viewState['available_tags'] ?? null) ? $viewState['available_tags'] : [];
 $ruleProfiles = is_array($viewState['rule_profiles'] ?? null) ? $viewState['rule_profiles'] : [];
@@ -20,8 +21,63 @@ $diagnostics = is_array($viewState['diagnostics'] ?? null) ? $viewState['diagnos
 $diagnosticsEnabled = !empty($viewState['diagnostics_enabled']);
 $notificationSettings = is_array($viewState['notification_settings'] ?? null) ? $viewState['notification_settings'] : [];
 $notificationSummary = is_array($viewState['notification_summary'] ?? null) ? $viewState['notification_summary'] : [];
-$notificationSelectedTags = is_array($notificationSettings['tags'] ?? null) ? $notificationSettings['tags'] : [];
-$notificationTagMode = count($notificationSelectedTags) > 0 && count($availableTags) > 0 ? 'selected' : 'all';
+$notificationTagsFor = static function (string $key) use ($notificationSettings): array {
+	return is_array($notificationSettings[$key] ?? null) ? $notificationSettings[$key] : [];
+};
+$notificationTagModeFor = static function (array $selectedTags) use ($availableTags): string {
+	return count($selectedTags) > 0 && count($availableTags) > 0 ? 'selected' : 'all';
+};
+$renderNotificationTagPicker = static function (string $prefix, string $label, array $selectedTags) use ($availableTags, $escape, $notificationTagModeFor): void {
+	$mode = $notificationTagModeFor($selectedTags);
+	$modeName = $prefix . '_tag_mode';
+	$tagsName = $prefix . '_tags[]';
+	?>
+	<div
+		class="autolabel-notification-tags"
+		data-autolabel-notification-tags
+		data-autolabel-notification-mode-name="<?= $escape($modeName) ?>"
+		data-autolabel-notification-tags-name="<?= $escape($tagsName) ?>"
+	>
+		<span class="autolabel-field-label"><?= $label ?></span>
+		<div class="autolabel-choice-row">
+			<label class="autolabel-choice">
+				<input type="radio" name="<?= $escape($modeName) ?>" value="all" <?= $mode === 'all' ? 'checked' : '' ?> />
+				<span><?= _t('ext.auto_label.notifications.tag_mode.all') ?></span>
+			</label>
+			<label class="autolabel-choice">
+				<input type="radio" name="<?= $escape($modeName) ?>" value="selected" <?= $mode === 'selected' ? 'checked' : '' ?> <?= count($availableTags) === 0 ? 'disabled' : '' ?> />
+				<span><?= _t('ext.auto_label.notifications.tag_mode.selected') ?></span>
+			</label>
+		</div>
+		<div class="autolabel-tag-picker" data-autolabel-notification-tag-list <?= $mode === 'all' ? 'hidden' : '' ?>>
+			<div class="autolabel-tag-picker__toolbar">
+				<span class="autolabel-help" data-autolabel-notification-tag-count data-count-template="<?= $escape(_t('ext.auto_label.notifications.selected_count')) ?>"></span>
+				<div class="autolabel-inline-actions">
+					<button class="btn btn--small" type="button" data-autolabel-notification-tag-select-all><?= _t('ext.auto_label.notifications.actions.select_all_tags') ?></button>
+					<button class="btn btn--small" type="button" data-autolabel-notification-tag-clear><?= _t('ext.auto_label.notifications.actions.clear_tags') ?></button>
+				</div>
+			</div>
+			<?php if (count($availableTags) > 0): ?>
+				<div class="autolabel-tag-picker__grid">
+					<?php foreach ($availableTags as $tagName): ?>
+						<label class="autolabel-tag-choice">
+							<input
+								type="checkbox"
+								name="<?= $escape($tagsName) ?>"
+								value="<?= $escape($tagName) ?>"
+								<?= in_array($tagName, $selectedTags, true) ? 'checked' : '' ?>
+							/>
+							<span>#<?= $escape($tagName) ?></span>
+						</label>
+					<?php endforeach; ?>
+				</div>
+			<?php else: ?>
+				<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.no_tags') ?></p>
+			<?php endif; ?>
+		</div>
+	</div>
+	<?php
+};
 $queueSnapshot = is_array($viewState['queue_snapshot'] ?? null) ? $viewState['queue_snapshot'] : [];
 $queueConcurrencyAvailable = !empty($viewState['queue_concurrency_available']);
 $manualQueueRun = is_array($viewState['manual_queue_run'] ?? null) ? $viewState['manual_queue_run'] : [];
@@ -605,53 +661,13 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						<span><?= _t('ext.auto_label.notifications.fields.enabled') ?></span>
 					</label>
 
-					<div class="autolabel-notification-tags" data-autolabel-notification-tags>
-						<span class="autolabel-field-label"><?= _t('ext.auto_label.notifications.fields.tags') ?></span>
-						<div class="autolabel-choice-row">
-							<label class="autolabel-choice">
-								<input type="radio" name="notification_tag_mode" value="all" <?= $notificationTagMode === 'all' ? 'checked' : '' ?> />
-								<span><?= _t('ext.auto_label.notifications.tag_mode.all') ?></span>
-							</label>
-							<label class="autolabel-choice">
-								<input type="radio" name="notification_tag_mode" value="selected" <?= $notificationTagMode === 'selected' ? 'checked' : '' ?> <?= count($availableTags) === 0 ? 'disabled' : '' ?> />
-								<span><?= _t('ext.auto_label.notifications.tag_mode.selected') ?></span>
-							</label>
-						</div>
-						<div class="autolabel-tag-picker" data-autolabel-notification-tag-list <?= $notificationTagMode === 'all' ? 'hidden' : '' ?>>
-							<div class="autolabel-tag-picker__toolbar">
-								<span class="autolabel-help" data-autolabel-notification-tag-count data-count-template="<?= $escape(_t('ext.auto_label.notifications.selected_count')) ?>"></span>
-								<div class="autolabel-inline-actions">
-									<button class="btn btn--small" type="button" data-autolabel-notification-tag-select-all><?= _t('ext.auto_label.notifications.actions.select_all_tags') ?></button>
-									<button class="btn btn--small" type="button" data-autolabel-notification-tag-clear><?= _t('ext.auto_label.notifications.actions.clear_tags') ?></button>
-								</div>
-							</div>
-							<?php if (count($availableTags) > 0): ?>
-								<div class="autolabel-tag-picker__grid">
-									<?php foreach ($availableTags as $tagName): ?>
-										<label class="autolabel-tag-choice">
-											<input
-												type="checkbox"
-												name="notification_tags[]"
-												value="<?= $escape($tagName) ?>"
-												<?= in_array($tagName, $notificationSelectedTags, true) ? 'checked' : '' ?>
-											/>
-											<span>#<?= $escape($tagName) ?></span>
-										</label>
-									<?php endforeach; ?>
-								</div>
-							<?php else: ?>
-								<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.no_tags') ?></p>
-							<?php endif; ?>
-						</div>
-						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.tags') ?></p>
-					</div>
-
 					<div class="autolabel-subsection">
 						<h3><?= _t('ext.auto_label.notifications.bark') ?></h3>
 						<label class="checkbox">
 							<input type="checkbox" name="bark_enabled" value="1" <?= !empty($notificationSettings['bark_enabled']) ? 'checked' : '' ?> />
 							<span><?= _t('ext.auto_label.notifications.fields.bark_enabled') ?></span>
 						</label>
+						<?php $renderNotificationTagPicker('bark', _t('ext.auto_label.notifications.fields.bark_tags'), $notificationTagsFor('bark_tags')); ?>
 						<label>
 							<span><?= _t('ext.auto_label.notifications.fields.bark_server_url') ?></span>
 							<input type="url" name="bark_server_url" value="<?= $escape($notificationSettings['bark_server_url'] ?? 'https://api.day.app') ?>" />
@@ -679,6 +695,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 							<input type="checkbox" name="email_enabled" value="1" <?= !empty($notificationSettings['email_enabled']) ? 'checked' : '' ?> />
 							<span><?= _t('ext.auto_label.notifications.fields.email_enabled') ?></span>
 						</label>
+						<?php $renderNotificationTagPicker('email', _t('ext.auto_label.notifications.fields.email_tags'), $notificationTagsFor('email_tags')); ?>
 						<label>
 							<span><?= _t('ext.auto_label.notifications.fields.email_to') ?></span>
 							<input type="email" name="email_to" value="<?= $escape($notificationSettings['email_to'] ?? '') ?>" />
@@ -690,6 +707,46 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.email') ?></p>
 					</div>
 
+					<div class="autolabel-subsection">
+						<h3><?= _t('ext.auto_label.notifications.events') ?></h3>
+						<label class="checkbox">
+							<input type="checkbox" name="event_enabled" value="1" <?= !empty($notificationSettings['event_enabled']) ? 'checked' : '' ?> />
+							<span><?= _t('ext.auto_label.notifications.fields.event_enabled') ?></span>
+						</label>
+						<?php $renderNotificationTagPicker('event', _t('ext.auto_label.notifications.fields.event_tags'), $notificationTagsFor('event_tags')); ?>
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.event_profile_id') ?></span>
+							<select name="event_profile_id">
+								<option value=""><?= _t('ext.auto_label.notifications.fields.event_profile_auto') ?></option>
+								<?php foreach ($enabledProfiles as $profile): ?>
+									<?php if (($profile['profile_mode'] ?? 'llm') !== 'llm') { continue; } ?>
+									<option value="<?= $escape($profile['id'] ?? '') ?>" <?= (string)($notificationSettings['event_profile_id'] ?? '') === (string)($profile['id'] ?? '') ? 'selected' : '' ?>>
+										<?= $escape($profile['name'] ?? $profile['id'] ?? '') ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</label>
+						<div class="autolabel-form__columns">
+							<label>
+								<span><?= _t('ext.auto_label.notifications.fields.event_window_hours') ?></span>
+								<input type="number" name="event_window_hours" min="1" max="168" value="<?= $escape((string)($notificationSettings['event_window_hours'] ?? 6)) ?>" />
+							</label>
+							<label>
+								<span><?= _t('ext.auto_label.notifications.fields.event_min_articles') ?></span>
+								<input type="number" name="event_min_articles" min="2" max="200" value="<?= $escape((string)($notificationSettings['event_min_articles'] ?? 5)) ?>" />
+							</label>
+							<label>
+								<span><?= _t('ext.auto_label.notifications.fields.event_cooldown_hours') ?></span>
+								<input type="number" name="event_cooldown_hours" min="1" max="720" value="<?= $escape((string)($notificationSettings['event_cooldown_hours'] ?? 12)) ?>" />
+							</label>
+							<label>
+								<span><?= _t('ext.auto_label.notifications.fields.event_max_digests_per_run') ?></span>
+								<input type="number" name="event_max_digests_per_run" min="1" max="10" value="<?= $escape((string)($notificationSettings['event_max_digests_per_run'] ?? 3)) ?>" />
+							</label>
+						</div>
+						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.events') ?></p>
+					</div>
+
 					<div class="autolabel-actions autolabel-actions--sticky">
 						<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.notifications.actions.save') ?></button>
 					</div>
@@ -699,8 +756,11 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<div class="autolabel-card">
 				<h2><?= _t('ext.auto_label.notifications.status') ?></h2>
 				<p><?= _t('ext.auto_label.notifications.pending_email') ?>: <?= $escape((string)($notificationSummary['pending_email'] ?? 0)) ?></p>
+				<p><?= _t('ext.auto_label.notifications.event_candidates') ?>: <?= $escape((string)($notificationSummary['event_candidates'] ?? 0)) ?></p>
+				<p><?= _t('ext.auto_label.notifications.event_digests') ?>: <?= $escape((string)($notificationSummary['event_digests'] ?? 0)) ?></p>
 				<p><?= _t('ext.auto_label.notifications.sent_email') ?>: <?= $escape((string)($notificationSummary['sent_email'] ?? 0)) ?></p>
 				<p><?= _t('ext.auto_label.notifications.sent_bark') ?>: <?= $escape((string)($notificationSummary['sent_bark'] ?? 0)) ?></p>
+				<p><?= _t('ext.auto_label.notifications.sent_events') ?>: <?= $escape((string)($notificationSummary['sent_events'] ?? 0)) ?></p>
 				<?php if (is_array($notificationSummary['last_delivery'] ?? null)): ?>
 					<pre class="autolabel-pre"><?= $escape(json_encode($notificationSummary['last_delivery'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
 				<?php endif; ?>
