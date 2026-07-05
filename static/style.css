@@ -346,6 +346,20 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
   gap: 0.5rem;
 }
 
+.autolabel-actions--sticky {
+  position: sticky;
+  bottom: 0.75rem;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 4;
+  align-items: center;
+  margin: 0.1rem -0.5rem -0.5rem;
+  border: 1px solid var(--autolabel-border);
+  border-radius: 10px;
+  padding: 0.65rem;
+  background: var(--autolabel-surface);
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.1);
+}
+
 .btn--small {
   padding: 0.35rem 0.6rem;
   font-size: 0.85rem;
