@@ -201,10 +201,6 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
-.autolabel-card--wide {
-  grid-column: 1 / -1;
-}
-
 .autolabel-form,
 .autolabel-list {
   display: grid;
@@ -260,18 +256,6 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
 
 .autolabel-subsection h3 {
   margin: 0;
-}
-
-.autolabel-notification-channels {
-  display: grid;
-  gap: 0.9rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  align-items: stretch;
-}
-
-.autolabel-notification-channels .autolabel-subsection {
-  min-width: 0;
-  align-content: start;
 }
 
 .autolabel-form input[type="checkbox"] {
