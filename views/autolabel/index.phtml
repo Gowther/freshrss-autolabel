@@ -170,8 +170,8 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<p><?= _t('ext.auto_label.profile.subtitle') ?></p>
 		</div>
 
-		<div class="autolabel-grid autolabel-workflow autolabel-workflow--list-first">
-			<div class="autolabel-card autolabel-workflow__editor">
+		<div class="autolabel-grid">
+			<div class="autolabel-card">
 				<h3><?= $profileForm['id'] === '' ? _t('ext.auto_label.profile.create') : _t('ext.auto_label.profile.edit') ?></h3>
 				<form method="post" action="<?= _url('autolabel', 'saveProfile') ?>" class="autolabel-form" data-autolabel-profile-form>
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
@@ -309,7 +309,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 				</form>
 			</div>
 
-			<div class="autolabel-card autolabel-workflow__summary">
+			<div class="autolabel-card">
 				<h3><?= _t('ext.auto_label.profile.available') ?></h3>
 				<?php if (count($profiles) === 0): ?>
 					<p><?= _t('ext.auto_label.misc.none_yet') ?></p>
@@ -364,8 +364,8 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<p><?= _t('ext.auto_label.rule.subtitle') ?></p>
 		</div>
 
-		<div class="autolabel-grid autolabel-workflow autolabel-workflow--list-first">
-			<div class="autolabel-card autolabel-workflow__editor">
+		<div class="autolabel-grid">
+			<div class="autolabel-card">
 				<h3><?= $ruleForm['id'] === '' ? _t('ext.auto_label.rule.create') : _t('ext.auto_label.rule.edit') ?></h3>
 				<form method="post" action="<?= _url('autolabel', 'saveRule') ?>" class="autolabel-form" data-autolabel-rule-form>
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
@@ -469,7 +469,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 				</form>
 			</div>
 
-			<div class="autolabel-card autolabel-workflow__summary">
+			<div class="autolabel-card">
 				<h3><?= _t('ext.auto_label.rule.current') ?></h3>
 				<?php if (count($rules) === 0): ?>
 					<p><?= _t('ext.auto_label.misc.none_yet') ?></p>
@@ -523,7 +523,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<p><?= _t('ext.auto_label.tools.subtitle') ?></p>
 		</div>
 
-		<div class="autolabel-grid autolabel-workflow autolabel-workflow--tools">
+		<div class="autolabel-grid">
 			<div class="autolabel-card">
 				<h2><?= _t('ext.auto_label.tools.dry_run') ?></h2>
 				<form method="post" action="<?= _url('autolabel', 'dryRun') ?>" class="autolabel-form">
@@ -650,8 +650,8 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<p><?= _t('ext.auto_label.notifications.subtitle') ?></p>
 		</div>
 
-		<div class="autolabel-grid autolabel-workflow autolabel-workflow--list-first">
-			<div class="autolabel-card autolabel-workflow__editor">
+		<div class="autolabel-grid">
+			<div class="autolabel-card">
 				<h2><?= _t('ext.auto_label.notifications.delivery') ?></h2>
 				<form method="post" action="<?= _url('autolabel', 'saveNotifications') ?>" class="autolabel-form">
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
@@ -757,7 +757,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 				</form>
 			</div>
 
-			<div class="autolabel-card autolabel-workflow__summary">
+			<div class="autolabel-card">
 				<h2><?= _t('ext.auto_label.notifications.status') ?></h2>
 				<p><?= _t('ext.auto_label.notifications.pending_email') ?>: <?= $escape((string)($notificationSummary['pending_email'] ?? 0)) ?></p>
 				<p><?= _t('ext.auto_label.notifications.event_candidates') ?>: <?= $escape((string)($notificationSummary['event_candidates'] ?? 0)) ?></p>

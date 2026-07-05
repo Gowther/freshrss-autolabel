@@ -201,32 +201,6 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
-.autolabel-workflow {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 980px;
-  width: 100%;
-  margin-inline: auto;
-}
-
-.autolabel-workflow--tools {
-  max-width: 1040px;
-}
-
-.autolabel-workflow__summary {
-  order: 1;
-}
-
-.autolabel-workflow__editor {
-  order: 2;
-}
-
-.autolabel-workflow__summary .autolabel-list {
-  max-height: min(64vh, 36rem);
-  overflow-y: auto;
-  padding-right: 0.25rem;
-  scrollbar-gutter: stable;
-}
-
 .autolabel-form,
 .autolabel-list {
   display: grid;
@@ -330,10 +304,6 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.5rem;
-  max-height: min(46vh, 24rem);
-  overflow-y: auto;
-  padding-right: 0.25rem;
-  scrollbar-gutter: stable;
 }
 
 .autolabel-tag-choice {
@@ -488,8 +458,6 @@ html[class*="theme_dark"] .autolabel-help--danger {
 
 .autolabel-pre {
   margin: 0;
-  max-height: min(52vh, 30rem);
-  overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.85rem;
