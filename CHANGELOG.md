@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2
+
+- Add versioned static asset URLs so notification panel tab scripts and styles are refreshed after plugin updates
+
 ## 0.9.1
 
 - Split the notification settings page into status, Bark, email, and event aggregation panels for easier scanning

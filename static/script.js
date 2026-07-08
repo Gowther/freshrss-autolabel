@@ -1,4 +1,4 @@
-window.__AutoLabelScriptVersion = '0.9.1-notification-tabs-v1';
+window.__AutoLabelScriptVersion = '0.9.2-notification-tabs-v2';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/lib/bootstrap.php';
 
 final class AutoLabelExtension extends Minz_Extension {
+	private const ASSET_VERSION = '0.9.2';
+
 	private static ?self $instance = null;
 
 	public static function instance(): ?self {
@@ -26,9 +28,15 @@ final class AutoLabelExtension extends Minz_Extension {
 
 	private function registerAssets(): void {
 		if (class_exists('Minz_View')) {
-			Minz_View::appendStyle($this->getFileUrl('style.css'));
-			Minz_View::appendScript($this->getFileUrl('script.js'), false, true, false, 'autolabel-script');
+			Minz_View::appendStyle($this->assetUrl('style.css'));
+			Minz_View::appendScript($this->assetUrl('script.js'), false, true, false, 'autolabel-script');
 		}
+	}
+
+	private function assetUrl(string $file): string {
+		$url = $this->getFileUrl($file);
+		$separator = strpos($url, '?') !== false ? '&' : '?';
+		return $url . $separator . 'v=' . rawurlencode(self::ASSET_VERSION);
 	}
 
 	public function profilesConfiguration(): array {
