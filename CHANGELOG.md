@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.3
+
+- Fix notification subpanel visibility when switching between status, Bark, email, and event aggregation tabs
+
 ## 0.9.2
 
 - Add versioned static asset URLs so notification panel tab scripts and styles are refreshed after plugin updates

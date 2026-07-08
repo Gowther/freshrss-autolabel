@@ -252,6 +252,11 @@ html[class*="theme_dark"] .autolabel-subtab[aria-selected="true"] {
   gap: 1rem;
 }
 
+.autolabel-notification-settings[hidden],
+.autolabel-notification-panel[hidden] {
+  display: none;
+}
+
 .autolabel-stat-grid {
   display: grid;
   gap: 0.55rem 1rem;

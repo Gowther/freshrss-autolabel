@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/lib/bootstrap.php';
 
 final class AutoLabelExtension extends Minz_Extension {
-	private const ASSET_VERSION = '0.9.2';
+	private const ASSET_VERSION = '0.9.3';
 
 	private static ?self $instance = null;
 
