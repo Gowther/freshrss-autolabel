@@ -1,4 +1,4 @@
-window.__AutoLabelScriptVersion = '0.9.3-notification-tabs-v3';
+window.__AutoLabelScriptVersion = '0.10.0-scheme-a';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -335,14 +335,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const actionNameFromUrl = (url) => ajaxActionNames.find((actionName) => String(url).includes(actionName)) ?? '';
 
   const showFeedback = (message, ok = true) => {
-    const feedback = document.querySelector('[data-autolabel-feedback]');
+    const feedback = document.querySelector('[data-autolabel-feedback], [data-autolabel-toast]');
     if (!(feedback instanceof HTMLElement) || typeof message !== 'string' || message.trim() === '') {
       return;
     }
 
     feedback.textContent = message.trim();
     feedback.hidden = false;
+    feedback.classList.toggle('autolabel-toast--error', !ok);
     feedback.classList.toggle('autolabel-feedback--error', !ok);
+    if (feedback._autolabelToastTimer) {
+      window.clearTimeout(feedback._autolabelToastTimer);
+    }
+    feedback._autolabelToastTimer = window.setTimeout(() => {
+      if (!feedback.classList.contains('autolabel-toast--error')) {
+        feedback.hidden = true;
+      }
+    }, ok ? 4200 : 8000);
   };
 
   const parseActionJsonResponse = async (response) => {
@@ -694,12 +703,114 @@ document.addEventListener('DOMContentLoaded', () => {
     enhanceRuleControls(panel);
     enhanceNotificationTagControls(panel);
     enhanceNotificationTabs(panel);
+    enhanceListFilters(panel);
+    enhanceCustomRuleName(panel);
   };
 
   enhanceProfileControls(document);
   enhanceRuleControls(document);
   enhanceNotificationTagControls(document);
   enhanceNotificationTabs(document);
+
+  // Scheme A: list filters, tab jumps, custom rule name
+  const enhanceListFilters = (scope) => {
+    const root = scope instanceof Document || scope instanceof Element ? scope : document;
+    for (const input of root.querySelectorAll('[data-autolabel-list-filter]')) {
+      if (!(input instanceof HTMLInputElement) || input.dataset.autolabelControlsEnhanced === 'true') {
+        continue;
+      }
+      input.dataset.autolabelControlsEnhanced = 'true';
+      const listName = input.dataset.autolabelListFilter || '';
+      const enabledOnly = root.querySelector(`[data-autolabel-list-enabled-only="${listName}"]`);
+      const list = root.querySelector(`[data-autolabel-list="${listName}"]`);
+      const apply = () => {
+        if (!(list instanceof HTMLElement)) {
+          return;
+        }
+        const query = input.value.trim().toLowerCase();
+        const onlyEnabled = enabledOnly instanceof HTMLInputElement && enabledOnly.checked;
+        for (const item of list.querySelectorAll('[data-autolabel-list-item]')) {
+          if (!(item instanceof HTMLElement)) {
+            continue;
+          }
+          const search = (item.dataset.search || item.textContent || '').toLowerCase();
+          const enabled = item.dataset.enabled === '1';
+          const matchesQuery = query === '' || search.includes(query);
+          const matchesEnabled = !onlyEnabled || enabled;
+          item.hidden = !(matchesQuery && matchesEnabled);
+        }
+      };
+      input.addEventListener('input', apply);
+      enabledOnly?.addEventListener('change', apply);
+      apply();
+    }
+  };
+
+  const enhanceTabJumps = () => {
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const jump = target.closest('[data-autolabel-tab-jump]');
+      if (!(jump instanceof HTMLElement)) {
+        return;
+      }
+      const tabId = jump.dataset.autolabelTabJump || '';
+      if (tabId === '') {
+        return;
+      }
+      event.preventDefault();
+      activateDashboardTab(tabId, true);
+    });
+  };
+
+  const enhanceCustomRuleName = (scope) => {
+    const root = scope instanceof Document || scope instanceof Element ? scope : document;
+    for (const form of root.querySelectorAll('[data-autolabel-rule-form]')) {
+      if (!(form instanceof HTMLFormElement)) {
+        continue;
+      }
+      const customToggle = form.querySelector('[data-autolabel-custom-name]');
+      const nameInput = findRuleNameInput(form);
+      if (!(customToggle instanceof HTMLInputElement) || !(nameInput instanceof HTMLInputElement)) {
+        continue;
+      }
+      if (customToggle.dataset.autolabelControlsEnhanced === 'true') {
+        continue;
+      }
+      customToggle.dataset.autolabelControlsEnhanced = 'true';
+      const syncCustom = () => {
+        if (customToggle.checked) {
+          // user-managed name: stop auto generation by setting lastGenerated to current
+          lastGeneratedRuleName = '';
+        } else if (nameInput.value.trim() === '' || nameInput.value.trim() === lastGeneratedRuleName) {
+          window.setTimeout(syncRuleNameFromSelectedTags, 0);
+        }
+      };
+      // If name already set and not empty on load, treat as custom when it doesn't match tags
+      customToggle.addEventListener('change', () => {
+        if (!customToggle.checked) {
+          lastGeneratedRuleName = nameInput.value.trim();
+          nameInput.value = '';
+          lastGeneratedRuleName = '';
+          lastSelectedRuleTags = '';
+          window.setTimeout(syncRuleNameFromSelectedTags, 0);
+        }
+      });
+      nameInput.addEventListener('input', () => {
+        if (nameInput.value.trim() !== '' && nameInput.value.trim() !== lastGeneratedRuleName) {
+          customToggle.checked = true;
+        }
+      });
+      syncCustom();
+    }
+  };
+
+  enhanceListFilters(document);
+  enhanceTabJumps();
+  enhanceCustomRuleName(document);
+
 
   const updateQueueSnapshotValues = (snapshot) => {
     if (!snapshot || typeof snapshot !== 'object') {
@@ -721,6 +832,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (lastRun) {
       lastRun.textContent = String(snapshot.last_run?.at ?? '');
+    }
+
+    const overviewPending = document.querySelector('[data-autolabel-overview-pending]');
+    if (overviewPending) {
+      const pendingEntryCount = Number.parseInt(String(snapshot.pending_entries ?? '0'), 10) || 0;
+      const pendingBackfillCount = Number.parseInt(String(snapshot.pending_backfills ?? '0'), 10) || 0;
+      const pendingBackfillEntryCount = Number.parseInt(String(snapshot.pending_backfill_entries ?? '0'), 10) || 0;
+      overviewPending.textContent = String(pendingEntryCount + pendingBackfillCount + pendingBackfillEntryCount);
     }
   };
 
