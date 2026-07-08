@@ -1,4 +1,4 @@
-window.__AutoLabelScriptVersion = '0.7.0-event-aggregation-v1';
+window.__AutoLabelScriptVersion = '0.9.1-notification-tabs-v1';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -606,6 +606,85 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const enhanceNotificationTabs = (scope) => {
+    for (const root of scope.querySelectorAll('[data-autolabel-notification-tabs]')) {
+      if (!(root instanceof HTMLElement) || root.dataset.autolabelControlsEnhanced === 'true') {
+        continue;
+      }
+
+      root.dataset.autolabelControlsEnhanced = 'true';
+      const tabs = Array.from(root.querySelectorAll('[data-autolabel-notification-tab]'));
+      const panels = Array.from(root.querySelectorAll('[data-autolabel-notification-panel]'));
+      const knownTabs = new Set(tabs.map((tab) => tab.dataset.autolabelNotificationTab).filter(Boolean));
+      const settingsForm = root.querySelector('[data-autolabel-notification-settings]');
+      const initialTab = root.dataset.autolabelNotificationInitialTab || '';
+      const defaultTab = knownTabs.has(initialTab)
+        ? initialTab
+        : (knownTabs.has('status') ? 'status' : (tabs[0]?.dataset.autolabelNotificationTab ?? ''));
+
+      const activateTab = (tabId) => {
+        const nextTab = knownTabs.has(tabId) ? tabId : defaultTab;
+        if (nextTab === '') {
+          return;
+        }
+
+        root.dataset.autolabelNotificationActive = nextTab;
+        for (const tab of tabs) {
+          const isActive = tab.dataset.autolabelNotificationTab === nextTab;
+          tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+          tab.setAttribute('tabindex', isActive ? '0' : '-1');
+        }
+
+        for (const panel of panels) {
+          if (panel instanceof HTMLElement) {
+            panel.hidden = panel.dataset.autolabelNotificationPanel !== nextTab;
+          }
+        }
+
+        if (settingsForm instanceof HTMLElement) {
+          settingsForm.hidden = nextTab === 'status';
+        }
+      };
+
+      const focusTabByOffset = (currentTab, offset) => {
+        const currentIndex = tabs.indexOf(currentTab);
+        if (currentIndex === -1 || tabs.length === 0) {
+          return;
+        }
+
+        const nextIndex = (currentIndex + offset + tabs.length) % tabs.length;
+        const nextTab = tabs[nextIndex];
+        activateTab(nextTab.dataset.autolabelNotificationTab ?? '');
+        nextTab.focus();
+      };
+
+      for (const tab of tabs) {
+        tab.addEventListener('click', () => {
+          activateTab(tab.dataset.autolabelNotificationTab ?? '');
+        });
+        tab.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            focusTabByOffset(tab, 1);
+          } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            focusTabByOffset(tab, -1);
+          } else if (event.key === 'Home') {
+            event.preventDefault();
+            activateTab(tabs[0]?.dataset.autolabelNotificationTab ?? '');
+            tabs[0]?.focus();
+          } else if (event.key === 'End') {
+            event.preventDefault();
+            activateTab(tabs[tabs.length - 1]?.dataset.autolabelNotificationTab ?? '');
+            tabs[tabs.length - 1]?.focus();
+          }
+        });
+      }
+
+      activateTab(defaultTab);
+    }
+  };
+
   const enhanceReplacedPanel = (panel) => {
     if (!(panel instanceof Element)) {
       return;
@@ -614,11 +693,13 @@ document.addEventListener('DOMContentLoaded', () => {
     enhanceProfileControls(panel);
     enhanceRuleControls(panel);
     enhanceNotificationTagControls(panel);
+    enhanceNotificationTabs(panel);
   };
 
   enhanceProfileControls(document);
   enhanceRuleControls(document);
   enhanceNotificationTagControls(document);
+  enhanceNotificationTabs(document);
 
   const updateQueueSnapshotValues = (snapshot) => {
     if (!snapshot || typeof snapshot !== 'object') {
@@ -650,7 +731,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const activeNotificationTab = panelName === 'notifications'
+      ? (currentPanel.querySelector('[data-autolabel-notification-tabs]')?.dataset.autolabelNotificationActive ?? '')
+      : '';
     const replacement = nextPanel.cloneNode(true);
+    if (activeNotificationTab !== '') {
+      replacement.querySelector('[data-autolabel-notification-tabs]')?.setAttribute('data-autolabel-notification-initial-tab', activeNotificationTab);
+    }
     currentPanel.replaceWith(replacement);
     enhanceReplacedPanel(replacement);
   };

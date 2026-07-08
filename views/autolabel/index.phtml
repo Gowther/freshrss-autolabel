@@ -659,138 +659,39 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<p><?= _t('ext.auto_label.notifications.subtitle') ?></p>
 		</div>
 
-		<div class="autolabel-grid">
-			<div class="autolabel-card">
-				<h2><?= _t('ext.auto_label.notifications.delivery') ?></h2>
-				<form method="post" action="<?= _url('autolabel', 'saveNotifications') ?>" class="autolabel-form">
-					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
+		<div class="autolabel-notification-shell" data-autolabel-notification-tabs>
+			<nav class="autolabel-subtabs" role="tablist" aria-label="<?= $escape(_t('ext.auto_label.notifications.title')) ?>">
+				<button id="autolabel-notifications-subtab-status" class="autolabel-subtab" type="button" data-autolabel-notification-tab="status" role="tab" aria-controls="autolabel-notifications-panel-status" aria-selected="true"><?= _t('ext.auto_label.notifications.status') ?></button>
+				<button id="autolabel-notifications-subtab-bark" class="autolabel-subtab" type="button" data-autolabel-notification-tab="bark" role="tab" aria-controls="autolabel-notifications-panel-bark" aria-selected="false"><?= _t('ext.auto_label.notifications.bark') ?></button>
+				<button id="autolabel-notifications-subtab-email" class="autolabel-subtab" type="button" data-autolabel-notification-tab="email" role="tab" aria-controls="autolabel-notifications-panel-email" aria-selected="false"><?= _t('ext.auto_label.notifications.email') ?></button>
+				<button id="autolabel-notifications-subtab-events" class="autolabel-subtab" type="button" data-autolabel-notification-tab="events" role="tab" aria-controls="autolabel-notifications-panel-events" aria-selected="false"><?= _t('ext.auto_label.notifications.events') ?></button>
+			</nav>
 
-					<label class="checkbox">
-						<input type="checkbox" name="notifications_enabled" value="1" <?= !empty($notificationSettings['enabled']) ? 'checked' : '' ?> />
-						<span><?= _t('ext.auto_label.notifications.fields.enabled') ?></span>
-					</label>
-
-					<div class="autolabel-subsection">
-						<h3><?= _t('ext.auto_label.notifications.bark') ?></h3>
-						<label class="checkbox">
-							<input type="checkbox" name="bark_enabled" value="1" <?= !empty($notificationSettings['bark_enabled']) ? 'checked' : '' ?> />
-							<span><?= _t('ext.auto_label.notifications.fields.bark_enabled') ?></span>
-						</label>
-						<?php $renderNotificationTagPicker('bark', _t('ext.auto_label.notifications.fields.bark_tags'), $notificationTagsFor('bark_tags')); ?>
-						<label>
-							<span><?= _t('ext.auto_label.notifications.fields.bark_server_url') ?></span>
-							<input type="url" name="bark_server_url" value="<?= $escape($notificationSettings['bark_server_url'] ?? 'https://api.day.app') ?>" />
-						</label>
-						<label>
-							<span><?= _t('ext.auto_label.notifications.fields.bark_device_key') ?></span>
-							<input type="password" name="bark_device_key" value="<?= $escape($notificationSettings['bark_device_key'] ?? '') ?>" autocomplete="off" />
-						</label>
-						<div class="autolabel-form__columns">
-							<label>
-								<span><?= _t('ext.auto_label.notifications.fields.bark_group') ?></span>
-								<input type="text" name="bark_group" value="<?= $escape($notificationSettings['bark_group'] ?? 'AutoLabel') ?>" />
-							</label>
-							<label>
-								<span><?= _t('ext.auto_label.notifications.fields.bark_max_per_run') ?></span>
-								<input type="number" name="bark_max_per_run" min="0" max="100" value="<?= $escape((string)($notificationSettings['bark_max_per_run'] ?? 5)) ?>" />
-							</label>
-						</div>
-						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.bark') ?></p>
-					</div>
-
-					<div class="autolabel-subsection">
-						<h3><?= _t('ext.auto_label.notifications.email') ?></h3>
-						<label class="checkbox">
-							<input type="checkbox" name="email_enabled" value="1" <?= !empty($notificationSettings['email_enabled']) ? 'checked' : '' ?> />
-							<span><?= _t('ext.auto_label.notifications.fields.email_enabled') ?></span>
-						</label>
-						<?php $renderNotificationTagPicker('email', _t('ext.auto_label.notifications.fields.email_tags'), $notificationTagsFor('email_tags')); ?>
-						<label>
-							<span><?= _t('ext.auto_label.notifications.fields.email_to') ?></span>
-							<input type="email" name="email_to" value="<?= $escape($notificationSettings['email_to'] ?? '') ?>" />
-						</label>
-						<label>
-							<span><?= _t('ext.auto_label.notifications.fields.email_subject_prefix') ?></span>
-							<input type="text" name="email_subject_prefix" value="<?= $escape($notificationSettings['email_subject_prefix'] ?? '[AutoLabel]') ?>" />
-						</label>
-						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.email') ?></p>
-					</div>
-
-					<div class="autolabel-subsection">
-						<h3><?= _t('ext.auto_label.notifications.events') ?></h3>
-						<label class="checkbox">
-							<input type="checkbox" name="event_enabled" value="1" <?= !empty($notificationSettings['event_enabled']) ? 'checked' : '' ?> />
-							<span><?= _t('ext.auto_label.notifications.fields.event_enabled') ?></span>
-						</label>
-						<label>
-							<span><?= _t('ext.auto_label.notifications.fields.event_profile_id') ?></span>
-							<select name="event_profile_id">
-								<option value=""><?= _t('ext.auto_label.notifications.fields.event_profile_auto') ?></option>
-								<?php foreach ($enabledProfiles as $profile): ?>
-									<?php if (($profile['profile_mode'] ?? 'llm') !== 'llm') { continue; } ?>
-									<option value="<?= $escape($profile['id'] ?? '') ?>" <?= (string)($notificationSettings['event_profile_id'] ?? '') === (string)($profile['id'] ?? '') ? 'selected' : '' ?>>
-										<?= $escape($profile['name'] ?? $profile['id'] ?? '') ?>
-									</option>
-								<?php endforeach; ?>
-							</select>
-						</label>
-						<label>
-							<span><?= _t('ext.auto_label.notifications.fields.event_prompt_instructions') ?></span>
-							<textarea name="event_prompt_instructions" rows="5"><?= $escape($notificationSettings['event_prompt_instructions'] ?? '') ?></textarea>
-						</label>
-						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.event_prompt_instructions') ?></p>
-						<div class="autolabel-form__columns">
-							<label>
-								<span><?= _t('ext.auto_label.notifications.fields.event_window_hours') ?></span>
-								<input type="number" name="event_window_hours" min="1" max="168" value="<?= $escape((string)($notificationSettings['event_window_hours'] ?? 6)) ?>" />
-							</label>
-							<label>
-								<span><?= _t('ext.auto_label.notifications.fields.event_run_interval_minutes') ?></span>
-								<input type="number" name="event_run_interval_minutes" min="1" max="1440" value="<?= $escape((string)($notificationSettings['event_run_interval_minutes'] ?? 10)) ?>" />
-							</label>
-							<label>
-								<span><?= _t('ext.auto_label.notifications.fields.event_min_articles') ?></span>
-								<input type="number" name="event_min_articles" min="2" max="200" value="<?= $escape((string)($notificationSettings['event_min_articles'] ?? 5)) ?>" />
-							</label>
-							<label>
-								<span><?= _t('ext.auto_label.notifications.fields.event_cooldown_hours') ?></span>
-								<input type="number" name="event_cooldown_hours" min="1" max="720" value="<?= $escape((string)($notificationSettings['event_cooldown_hours'] ?? 12)) ?>" />
-							</label>
-							<label>
-								<span><?= _t('ext.auto_label.notifications.fields.event_max_digests_per_run') ?></span>
-								<input type="number" name="event_max_digests_per_run" min="1" max="10" value="<?= $escape((string)($notificationSettings['event_max_digests_per_run'] ?? 3)) ?>" />
-							</label>
-						</div>
-						<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.events') ?></p>
-					</div>
-
-					<div class="autolabel-actions autolabel-actions--sticky">
-						<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.notifications.actions.save') ?></button>
-					</div>
-				</form>
-			</div>
-
-			<div class="autolabel-card">
+			<div id="autolabel-notifications-panel-status" class="autolabel-card autolabel-notification-panel" data-autolabel-notification-panel="status" role="tabpanel" aria-labelledby="autolabel-notifications-subtab-status">
 				<h2><?= _t('ext.auto_label.notifications.status') ?></h2>
-				<p><?= _t('ext.auto_label.notifications.pending_email') ?>: <?= $escape((string)($notificationSummary['pending_email'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.event_candidates') ?>: <?= $escape((string)($notificationSummary['event_candidates'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.event_digests') ?>: <?= $escape((string)($notificationSummary['event_digests'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.sent_email') ?>: <?= $escape((string)($notificationSummary['sent_email'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.sent_bark') ?>: <?= $escape((string)($notificationSummary['sent_bark'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.sent_events') ?>: <?= $escape((string)($notificationSummary['sent_events'] ?? 0)) ?></p>
+				<div class="autolabel-stat-grid">
+					<p><?= _t('ext.auto_label.notifications.pending_email') ?>: <?= $escape((string)($notificationSummary['pending_email'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_candidates') ?>: <?= $escape((string)($notificationSummary['event_candidates'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.event_digests') ?>: <?= $escape((string)($notificationSummary['event_digests'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.sent_email') ?>: <?= $escape((string)($notificationSummary['sent_email'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.sent_bark') ?>: <?= $escape((string)($notificationSummary['sent_bark'] ?? 0)) ?></p>
+					<p><?= _t('ext.auto_label.notifications.sent_events') ?>: <?= $escape((string)($notificationSummary['sent_events'] ?? 0)) ?></p>
+				</div>
 				<div class="autolabel-subsection">
 					<h3><?= _t('ext.auto_label.notifications.event_status') ?></h3>
-					<p><?= _t('ext.auto_label.notifications.event_total_candidates') ?>: <?= $escape((string)($eventAggregationStatus['total_candidates'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_window_candidates') ?>: <?= $escape((string)($eventAggregationStatus['window_candidates'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_enriched_candidates') ?>: <?= $escape((string)($eventAggregationStatus['enriched_candidates'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_feed_count') ?>: <?= $escape((string)($eventAggregationStatus['feed_count'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_oldest_candidate') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['oldest_candidate_at'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_latest_candidate') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['latest_candidate_at'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_last_run_at') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['last_event_run_at'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_next_run_at') ?>: <?= $escape($eventNextRunLabel) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_recent_digests') ?>: <?= $escape((string)($eventAggregationStatus['event_digest_count'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_cooldown_keys') ?>: <?= $escape((string)($eventAggregationStatus['cooldown_event_keys'] ?? 0)) ?></p>
-					<p><?= _t('ext.auto_label.notifications.event_prompt_candidate_count') ?>: <?= $escape((string)($eventAggregationStatus['prompt_candidate_count'] ?? 0)) ?></p>
+					<div class="autolabel-stat-grid">
+						<p><?= _t('ext.auto_label.notifications.event_total_candidates') ?>: <?= $escape((string)($eventAggregationStatus['total_candidates'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_window_candidates') ?>: <?= $escape((string)($eventAggregationStatus['window_candidates'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_enriched_candidates') ?>: <?= $escape((string)($eventAggregationStatus['enriched_candidates'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_feed_count') ?>: <?= $escape((string)($eventAggregationStatus['feed_count'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_oldest_candidate') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['oldest_candidate_at'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_latest_candidate') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['latest_candidate_at'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_last_run_at') ?>: <?= $escape($formatEventTimestamp($eventAggregationStatus['last_event_run_at'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_next_run_at') ?>: <?= $escape($eventNextRunLabel) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_recent_digests') ?>: <?= $escape((string)($eventAggregationStatus['event_digest_count'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_cooldown_keys') ?>: <?= $escape((string)($eventAggregationStatus['cooldown_event_keys'] ?? 0)) ?></p>
+						<p><?= _t('ext.auto_label.notifications.event_prompt_candidate_count') ?>: <?= $escape((string)($eventAggregationStatus['prompt_candidate_count'] ?? 0)) ?></p>
+					</div>
 					<details>
 						<summary><?= _t('ext.auto_label.notifications.event_prompt_preview') ?></summary>
 						<pre class="autolabel-pre autolabel-pre--prompt"><?= $escape($eventPromptPreview !== '' ? $eventPromptPreview : _t('ext.auto_label.notifications.event_no_prompt_preview')) ?></pre>
@@ -799,19 +700,127 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 				<?php if (is_array($notificationSummary['last_delivery'] ?? null)): ?>
 					<pre class="autolabel-pre"><?= $escape(json_encode($notificationSummary['last_delivery'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
 				<?php endif; ?>
-				<form method="post" action="<?= _url('autolabel', 'testNotifications') ?>" class="autolabel-form">
-					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
-					<div class="autolabel-actions">
+				<div class="autolabel-form">
+					<form method="post" action="<?= _url('autolabel', 'testNotifications') ?>">
+						<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 						<button class="btn" type="submit"><?= _t('ext.auto_label.notifications.actions.test') ?></button>
-					</div>
-				</form>
-				<form method="post" action="<?= _url('autolabel', 'clearNotifications') ?>" class="autolabel-form" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.notifications.confirm_clear')) ?>');">
-					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
-					<div class="autolabel-actions">
+					</form>
+					<form method="post" action="<?= _url('autolabel', 'clearNotifications') ?>" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.notifications.confirm_clear')) ?>');">
+						<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 						<button class="btn btn--danger" type="submit"><?= _t('ext.auto_label.notifications.actions.clear') ?></button>
-					</div>
-				</form>
+					</form>
+				</div>
 			</div>
+
+			<form method="post" action="<?= _url('autolabel', 'saveNotifications') ?>" class="autolabel-form autolabel-notification-settings" data-autolabel-notification-settings>
+				<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
+
+				<div class="autolabel-card autolabel-notification-general">
+					<h2><?= _t('ext.auto_label.notifications.delivery') ?></h2>
+					<label class="checkbox">
+						<input type="checkbox" name="notifications_enabled" value="1" <?= !empty($notificationSettings['enabled']) ? 'checked' : '' ?> />
+						<span><?= _t('ext.auto_label.notifications.fields.enabled') ?></span>
+					</label>
+				</div>
+
+				<div id="autolabel-notifications-panel-bark" class="autolabel-card autolabel-notification-panel" data-autolabel-notification-panel="bark" role="tabpanel" aria-labelledby="autolabel-notifications-subtab-bark">
+					<h2><?= _t('ext.auto_label.notifications.bark') ?></h2>
+					<label class="checkbox">
+						<input type="checkbox" name="bark_enabled" value="1" <?= !empty($notificationSettings['bark_enabled']) ? 'checked' : '' ?> />
+						<span><?= _t('ext.auto_label.notifications.fields.bark_enabled') ?></span>
+					</label>
+					<?php $renderNotificationTagPicker('bark', _t('ext.auto_label.notifications.fields.bark_tags'), $notificationTagsFor('bark_tags')); ?>
+					<label>
+						<span><?= _t('ext.auto_label.notifications.fields.bark_server_url') ?></span>
+						<input type="url" name="bark_server_url" value="<?= $escape($notificationSettings['bark_server_url'] ?? 'https://api.day.app') ?>" />
+					</label>
+					<label>
+						<span><?= _t('ext.auto_label.notifications.fields.bark_device_key') ?></span>
+						<input type="password" name="bark_device_key" value="<?= $escape($notificationSettings['bark_device_key'] ?? '') ?>" autocomplete="off" />
+					</label>
+					<div class="autolabel-form__columns">
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.bark_group') ?></span>
+							<input type="text" name="bark_group" value="<?= $escape($notificationSettings['bark_group'] ?? 'AutoLabel') ?>" />
+						</label>
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.bark_max_per_run') ?></span>
+							<input type="number" name="bark_max_per_run" min="0" max="100" value="<?= $escape((string)($notificationSettings['bark_max_per_run'] ?? 5)) ?>" />
+						</label>
+					</div>
+					<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.bark') ?></p>
+				</div>
+
+				<div id="autolabel-notifications-panel-email" class="autolabel-card autolabel-notification-panel" data-autolabel-notification-panel="email" role="tabpanel" aria-labelledby="autolabel-notifications-subtab-email">
+					<h2><?= _t('ext.auto_label.notifications.email') ?></h2>
+					<label class="checkbox">
+						<input type="checkbox" name="email_enabled" value="1" <?= !empty($notificationSettings['email_enabled']) ? 'checked' : '' ?> />
+						<span><?= _t('ext.auto_label.notifications.fields.email_enabled') ?></span>
+					</label>
+					<?php $renderNotificationTagPicker('email', _t('ext.auto_label.notifications.fields.email_tags'), $notificationTagsFor('email_tags')); ?>
+					<label>
+						<span><?= _t('ext.auto_label.notifications.fields.email_to') ?></span>
+						<input type="email" name="email_to" value="<?= $escape($notificationSettings['email_to'] ?? '') ?>" />
+					</label>
+					<label>
+						<span><?= _t('ext.auto_label.notifications.fields.email_subject_prefix') ?></span>
+						<input type="text" name="email_subject_prefix" value="<?= $escape($notificationSettings['email_subject_prefix'] ?? '[AutoLabel]') ?>" />
+					</label>
+					<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.email') ?></p>
+				</div>
+
+				<div id="autolabel-notifications-panel-events" class="autolabel-card autolabel-notification-panel" data-autolabel-notification-panel="events" role="tabpanel" aria-labelledby="autolabel-notifications-subtab-events">
+					<h2><?= _t('ext.auto_label.notifications.events') ?></h2>
+					<label class="checkbox">
+						<input type="checkbox" name="event_enabled" value="1" <?= !empty($notificationSettings['event_enabled']) ? 'checked' : '' ?> />
+						<span><?= _t('ext.auto_label.notifications.fields.event_enabled') ?></span>
+					</label>
+					<label>
+						<span><?= _t('ext.auto_label.notifications.fields.event_profile_id') ?></span>
+						<select name="event_profile_id">
+							<option value=""><?= _t('ext.auto_label.notifications.fields.event_profile_auto') ?></option>
+							<?php foreach ($enabledProfiles as $profile): ?>
+								<?php if (($profile['profile_mode'] ?? 'llm') !== 'llm') { continue; } ?>
+								<option value="<?= $escape($profile['id'] ?? '') ?>" <?= (string)($notificationSettings['event_profile_id'] ?? '') === (string)($profile['id'] ?? '') ? 'selected' : '' ?>>
+									<?= $escape($profile['name'] ?? $profile['id'] ?? '') ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</label>
+					<label>
+						<span><?= _t('ext.auto_label.notifications.fields.event_prompt_instructions') ?></span>
+						<textarea name="event_prompt_instructions" rows="5"><?= $escape($notificationSettings['event_prompt_instructions'] ?? '') ?></textarea>
+					</label>
+					<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.event_prompt_instructions') ?></p>
+					<div class="autolabel-form__columns">
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.event_window_hours') ?></span>
+							<input type="number" name="event_window_hours" min="1" max="168" value="<?= $escape((string)($notificationSettings['event_window_hours'] ?? 6)) ?>" />
+						</label>
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.event_run_interval_minutes') ?></span>
+							<input type="number" name="event_run_interval_minutes" min="1" max="1440" value="<?= $escape((string)($notificationSettings['event_run_interval_minutes'] ?? 10)) ?>" />
+						</label>
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.event_min_articles') ?></span>
+							<input type="number" name="event_min_articles" min="2" max="200" value="<?= $escape((string)($notificationSettings['event_min_articles'] ?? 5)) ?>" />
+						</label>
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.event_cooldown_hours') ?></span>
+							<input type="number" name="event_cooldown_hours" min="1" max="720" value="<?= $escape((string)($notificationSettings['event_cooldown_hours'] ?? 12)) ?>" />
+						</label>
+						<label>
+							<span><?= _t('ext.auto_label.notifications.fields.event_max_digests_per_run') ?></span>
+							<input type="number" name="event_max_digests_per_run" min="1" max="10" value="<?= $escape((string)($notificationSettings['event_max_digests_per_run'] ?? 3)) ?>" />
+						</label>
+					</div>
+					<p class="autolabel-help"><?= _t('ext.auto_label.notifications.help.events') ?></p>
+				</div>
+
+				<div class="autolabel-actions autolabel-actions--sticky">
+					<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.notifications.actions.save') ?></button>
+				</div>
+			</form>
 		</div>
 	</section>
 

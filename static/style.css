@@ -144,15 +144,58 @@ html[class*="theme_dark"] .autolabel-hero__meta a {
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
 }
 
+.autolabel-subtabs {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  border: 1px solid var(--autolabel-border);
+  border-radius: 10px;
+  padding: 0.35rem;
+  background: var(--autolabel-surface-alt);
+}
+
+.autolabel-subtab {
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: var(--autolabel-text-muted);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.autolabel-subtab:hover,
+.autolabel-subtab:focus-visible {
+  color: var(--autolabel-text);
+  border-color: var(--autolabel-border);
+  outline: none;
+}
+
+.autolabel-subtab[aria-selected="true"] {
+  border-color: rgba(32, 119, 181, 0.35);
+  background: var(--autolabel-surface);
+  color: #1676b1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
 html.darkMode_yes .autolabel-tab[aria-selected="true"],
+html.darkMode_yes .autolabel-subtab[aria-selected="true"],
 html[class*="darkMode_yes"] .autolabel-tab[aria-selected="true"],
-html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
+html[class*="darkMode_yes"] .autolabel-subtab[aria-selected="true"],
+html[class*="theme_dark"] .autolabel-tab[aria-selected="true"],
+html[class*="theme_dark"] .autolabel-subtab[aria-selected="true"] {
   color: #7cc7ff;
 }
 
 @media (prefers-color-scheme: dark) {
   html.darkMode_auto .autolabel-tab[aria-selected="true"],
-  html[class*="darkMode_auto"] .autolabel-tab[aria-selected="true"] {
+  html.darkMode_auto .autolabel-subtab[aria-selected="true"],
+  html[class*="darkMode_auto"] .autolabel-tab[aria-selected="true"],
+  html[class*="darkMode_auto"] .autolabel-subtab[aria-selected="true"] {
     color: #7cc7ff;
   }
 }
@@ -199,6 +242,24 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.autolabel-notification-shell,
+.autolabel-notification-settings,
+.autolabel-notification-panel,
+.autolabel-notification-general {
+  display: grid;
+  gap: 1rem;
+}
+
+.autolabel-stat-grid {
+  display: grid;
+  gap: 0.55rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.autolabel-stat-grid p {
+  margin: 0;
 }
 
 .autolabel-form,

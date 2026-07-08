@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- Split the notification settings page into status, Bark, email, and event aggregation panels for easier scanning
+
 ## 0.5.2
 
 - Make aggregate LLM decision parsing tolerant of nested matrix responses and common field aliases
