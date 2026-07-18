@@ -1,4 +1,4 @@
-window.__AutoLabelScriptVersion = '0.7.0-event-aggregation-v1';
+window.__AutoLabelScriptVersion = '0.8.0-ui-polish';
 console.info('AutoLabel script loaded:', window.__AutoLabelScriptVersion);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -112,21 +112,35 @@ document.addEventListener('DOMContentLoaded', () => {
       || Array.from(form.querySelectorAll('select')).find((select) => select.name === 'target_tags[]');
   };
 
+  const findRuleSelectedTags = (form) => {
+    const container = findRuleTargetTagsSelect(form);
+    if (!container) {
+      return [];
+    }
+
+    if (container instanceof HTMLSelectElement) {
+      return Array.from(container.options)
+        .filter((option) => option.selected)
+        .map((option) => option.value.trim())
+        .filter((value) => value !== '');
+    }
+
+    return Array.from(container.querySelectorAll('input[name="target_tags[]"]:checked'))
+      .map((input) => input.value.trim())
+      .filter((value) => value !== '');
+  };
+
   let lastGeneratedRuleName = '';
   let lastSelectedRuleTags = '';
 
   const syncRuleNameFromSelectedTags = () => {
     const form = findRuleForm();
     const nameInput = findRuleNameInput(form);
-    const targetTagsSelect = findRuleTargetTagsSelect(form);
-    if (!nameInput || !targetTagsSelect) {
+    if (!nameInput || !findRuleTargetTagsSelect(form)) {
       return;
     }
 
-    const selectedTags = Array.from(targetTagsSelect.options)
-      .filter((option) => option.selected)
-      .map((option) => option.value.trim())
-      .filter((value) => value !== '');
+    const selectedTags = findRuleSelectedTags(form);
     const selectedKey = selectedTags.join('\n');
     const generatedName = selectedTags.join(', ');
     const currentName = nameInput.value.trim();
@@ -305,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!(target instanceof Element)) {
         return;
       }
-      if (target.matches('select[name="target_tags[]"], [data-autolabel-target-tags], input[name="name"], [data-autolabel-rule-name]')) {
+      if (target.matches('select[name="target_tags[]"], input[name="target_tags[]"], [data-autolabel-target-tags], input[name="name"], [data-autolabel-rule-name]')) {
         window.setTimeout(syncRuleNameFromSelectedTags, 0);
       }
     });
@@ -519,6 +533,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       profileSelect?.addEventListener('change', syncRuleForm);
       modeSelect?.addEventListener('change', syncRuleForm);
+      form.addEventListener('submit', (event) => {
+        if (findRuleSelectedTags(form).length > 0) {
+          return;
+        }
+        event.preventDefault();
+        showFeedback(form.dataset.noTagsMessage || 'Please choose at least one target tag.', false);
+      });
       nameInput?.addEventListener('input', () => {
         if (nameInput.value.trim() === '') {
           lastGeneratedRuleName = '';
@@ -1165,12 +1186,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function selectedTagNames(select) {
     var tags = [];
     var index;
-    if (!select || !select.options) {
+    var boxes;
+    if (!select) {
       return tags;
     }
-    for (index = 0; index < select.options.length; index += 1) {
-      if (select.options[index].selected && select.options[index].value.trim() !== '') {
-        tags.push(select.options[index].value.trim());
+    if (select.options) {
+      for (index = 0; index < select.options.length; index += 1) {
+        if (select.options[index].selected && select.options[index].value.trim() !== '') {
+          tags.push(select.options[index].value.trim());
+        }
+      }
+      return tags;
+    }
+    boxes = select.querySelectorAll('input[name="target_tags[]"]:checked');
+    for (index = 0; index < boxes.length; index += 1) {
+      if (boxes[index].value.trim() !== '') {
+        tags.push(boxes[index].value.trim());
       }
     }
     return tags;
@@ -1209,7 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!target || !target.matches) {
       return;
     }
-    if (target.matches('select[name="target_tags[]"], [data-autolabel-target-tags], input[name="name"], [data-autolabel-rule-name]')) {
+    if (target.matches('select[name="target_tags[]"], input[name="target_tags[]"], [data-autolabel-target-tags], input[name="name"], [data-autolabel-rule-name]')) {
       window.setTimeout(syncRuleName, 0);
     }
   }

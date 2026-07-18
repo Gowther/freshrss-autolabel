@@ -95,6 +95,9 @@ return [
 					'no_tags' => 'No FreshRSS tags are available yet. Please create tags in FreshRSS first.',
 					'manage_tags' => 'Open FreshRSS tag management',
 				],
+				'error' => [
+					'no_tags' => 'Choose at least one target tag.',
+				],
 			],
 			'tools' => [
 				'title' => 'Run tools',
@@ -268,6 +271,10 @@ return [
 				'cancel' => 'Cancel',
 				'llm' => 'LLM',
 				'embedding' => 'Embedding',
+				'details' => 'Details',
+			],
+			'layout' => [
+				'advanced' => 'Advanced settings',
 			],
 	],
 ];

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0
+
+- Refresh the AutoLabel dashboard UI: slimmer header, cleaner tabs and cards, consistent card titles, and stat tiles for queue and notification metrics
+- Replace the rule form's native multi-select with the same checkbox tag grid used by notification settings, and block rule submission when no target tag is selected
+- Move rarely used profile fields into a collapsible "Advanced settings" block and group related checkboxes
+- Collapse raw diagnostic and last-delivery JSON payloads behind details toggles and cap preformatted block heights
+- Combine paired card actions (process/clear queue, test/clear notifications, save/clear diagnostics) into single button rows
+- Fix checkboxes and radios stacking above their labels inside forms, and neutralize red `:invalid` styling on untouched required selects
+- Fix notification tag pickers staying visible when "any matching tag" mode is selected
+- Polish dark mode with `color-scheme: dark`, dark-native secondary buttons, AA-contrast primary buttons, and a more distinct code background
+
 ## 0.5.2
 
 - Make aggregate LLM decision parsing tolerant of nested matrix responses and common field aliases

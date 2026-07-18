@@ -1,215 +1,336 @@
+/* AutoLabel dashboard — refreshed UI (v0.8.0) */
 .autolabel-page {
-  --autolabel-bg: var(--main-background, #ffffff);
-  --autolabel-surface: #ffffff;
-  --autolabel-surface-alt: #f6f8fb;
-  --autolabel-border: rgba(22, 32, 51, 0.12);
-  --autolabel-text: var(--text-color, #1f2937);
-  --autolabel-text-muted: rgba(31, 41, 55, 0.72);
-  --autolabel-input-bg: #ffffff;
-  --autolabel-input-border: rgba(22, 32, 51, 0.18);
-  --autolabel-code-bg: rgba(113, 113, 122, 0.08);
-  --autolabel-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --al-surface: var(--background-color-light, #ffffff);
+  --al-surface-alt: var(--background-color-middle, #f5f7fa);
+  --al-border: var(--border-color, rgba(27, 35, 48, 0.12));
+  --al-border-strong: rgba(27, 35, 48, 0.2);
+  --al-text: var(--font-color, #1f2937);
+  --al-muted: var(--font-color-grey, rgba(31, 41, 55, 0.66));
+  --al-input-bg: var(--background-color-light, #ffffff);
+  --al-input-border: rgba(27, 35, 48, 0.2);
+  --al-code-bg: rgba(27, 35, 48, 0.055);
+  --al-accent: #1676b1;
+  --al-accent-strong: #0f5c8d;
+  --al-accent-soft: rgba(22, 118, 177, 0.09);
+  --al-ok: #0b8d5e;
+  --al-warn: #b45309;
+  --al-danger: #c63c3c;
+  --al-danger-soft: rgba(198, 60, 60, 0.08);
+  --al-radius: 10px;
+  --al-radius-sm: 7px;
+  --al-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --al-shadow-md: 0 8px 24px rgba(16, 24, 40, 0.1);
   display: grid;
-  gap: 1.5rem;
-  width: min(100%, 1280px);
+  gap: 1.25rem;
+  width: min(100%, 1200px);
   margin: 0 auto;
-  padding-inline: clamp(0.75rem, 2vw, 1.5rem);
+  padding-inline: clamp(0.75rem, 2vw, 1.25rem);
   box-sizing: border-box;
-  color: var(--autolabel-text);
+  color: var(--al-text);
 }
 
 html.darkMode_yes .autolabel-page,
 html[class*="darkMode_yes"] .autolabel-page,
 html[class*="theme_dark"] .autolabel-page {
-  --autolabel-bg: #11161d;
-  --autolabel-surface: #18202b;
-  --autolabel-surface-alt: #202a37;
-  --autolabel-border: rgba(148, 163, 184, 0.22);
-  --autolabel-text: #eef2f7;
-  --autolabel-text-muted: rgba(226, 232, 240, 0.78);
-  --autolabel-input-bg: #101720;
-  --autolabel-input-border: rgba(148, 163, 184, 0.3);
-  --autolabel-code-bg: rgba(15, 23, 42, 0.5);
-  --autolabel-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  color-scheme: dark;
+  --al-surface: #18202b;
+  --al-surface-alt: #1f2937;
+  --al-border: rgba(148, 163, 184, 0.2);
+  --al-border-strong: rgba(148, 163, 184, 0.32);
+  --al-text: #eef2f7;
+  --al-muted: rgba(226, 232, 240, 0.72);
+  --al-input-bg: #121924;
+  --al-input-border: rgba(148, 163, 184, 0.32);
+  --al-code-bg: rgba(148, 163, 184, 0.12);
+  --al-accent: #6cb8e8;
+  --al-accent-strong: #8ec9ef;
+  --al-accent-soft: rgba(108, 184, 232, 0.14);
+  --al-ok: #86efc3;
+  --al-warn: #fbbf24;
+  --al-danger: #fca5a5;
+  --al-danger-soft: rgba(252, 165, 165, 0.12);
+  --al-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --al-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
   html.darkMode_auto .autolabel-page,
   html[class*="darkMode_auto"] .autolabel-page {
-    --autolabel-bg: #11161d;
-    --autolabel-surface: #18202b;
-    --autolabel-surface-alt: #202a37;
-    --autolabel-border: rgba(148, 163, 184, 0.22);
-    --autolabel-text: #eef2f7;
-    --autolabel-text-muted: rgba(226, 232, 240, 0.78);
-    --autolabel-input-bg: #101720;
-    --autolabel-input-border: rgba(148, 163, 184, 0.3);
-    --autolabel-code-bg: rgba(15, 23, 42, 0.5);
-    --autolabel-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+    color-scheme: dark;
+    --al-surface: #18202b;
+    --al-surface-alt: #1f2937;
+    --al-border: rgba(148, 163, 184, 0.2);
+    --al-border-strong: rgba(148, 163, 184, 0.32);
+    --al-text: #eef2f7;
+    --al-muted: rgba(226, 232, 240, 0.72);
+    --al-input-bg: #121924;
+    --al-input-border: rgba(148, 163, 184, 0.32);
+    --al-code-bg: rgba(148, 163, 184, 0.12);
+    --al-accent: #6cb8e8;
+    --al-accent-strong: #8ec9ef;
+    --al-accent-soft: rgba(108, 184, 232, 0.14);
+    --al-ok: #86efc3;
+    --al-warn: #fbbf24;
+    --al-danger: #fca5a5;
+    --al-danger-soft: rgba(252, 165, 165, 0.12);
+    --al-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --al-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.35);
   }
 }
 
-.autolabel-page a {
-  color: inherit;
-}
+.autolabel-page a { color: inherit; }
 
-.autolabel-hero,
-.autolabel-card,
-.autolabel-list__item {
-  border: 1px solid var(--autolabel-border);
-  border-radius: 12px;
-  background: var(--autolabel-surface);
-  box-shadow: var(--autolabel-shadow);
-}
+.autolabel-page [hidden] { display: none !important; }
 
-.autolabel-hero,
-.autolabel-card {
-  padding: 1.25rem;
-}
-
+/* ---------- header ---------- */
 .autolabel-hero {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
   align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius);
   background:
-    radial-gradient(circle at top right, rgba(22, 164, 117, 0.18), transparent 35%),
-    linear-gradient(135deg, rgba(32, 119, 181, 0.14), rgba(22, 164, 117, 0.08));
+    radial-gradient(circle at top right, var(--al-accent-soft), transparent 55%),
+    var(--al-surface);
+  box-shadow: var(--al-shadow-sm);
 }
 
-.autolabel-hero__meta {
-  margin: 0.55rem 0 0;
-  color: var(--autolabel-text-muted);
-  font-size: 0.95rem;
+.autolabel-hero h1 {
+  margin: 0 0 0.3rem;
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+.autolabel-hero p {
+  margin: 0;
+  max-width: 54rem;
+  color: var(--al-muted);
+  font-size: 0.92rem;
   line-height: 1.5;
 }
 
+.autolabel-hero__meta {
+  margin-top: 0.5rem !important;
+  font-size: 0.84rem !important;
+}
+
 .autolabel-hero__meta a {
-  color: #1676b1;
+  color: var(--al-accent);
   text-decoration: underline;
   text-underline-offset: 0.14em;
 }
 
-html.darkMode_yes .autolabel-hero__meta a,
-html[class*="darkMode_yes"] .autolabel-hero__meta a,
-html[class*="theme_dark"] .autolabel-hero__meta a {
-  color: #7cc7ff;
+.autolabel-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  html.darkMode_auto .autolabel-hero__meta a,
-  html[class*="darkMode_auto"] .autolabel-hero__meta a {
-    color: #7cc7ff;
-  }
-}
-
+/* ---------- tabs ---------- */
 .autolabel-tabs {
   position: sticky;
-  top: 0.5rem;
+  top: 0.4rem;
   z-index: 5;
   display: flex;
-  gap: 0.35rem;
+  gap: 0.2rem;
   overflow-x: auto;
-  border: 1px solid var(--autolabel-border);
-  border-radius: 12px;
-  padding: 0.4rem;
-  background: var(--autolabel-bg);
-  box-shadow: var(--autolabel-shadow);
-  backdrop-filter: blur(10px);
+  padding: 0.25rem;
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius);
+  background: var(--al-surface-alt);
+  box-shadow: var(--al-shadow-sm);
 }
 
 .autolabel-tab {
   flex: 0 0 auto;
+  padding: 0.42rem 0.8rem;
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 0.55rem 0.8rem;
-  color: var(--autolabel-text-muted);
+  border-radius: var(--al-radius-sm);
+  color: var(--al-muted);
   font-weight: 600;
-  line-height: 1.2;
+  font-size: 0.9rem;
+  line-height: 1.3;
   text-decoration: none;
   white-space: nowrap;
+  transition: color 0.12s ease, background 0.12s ease;
 }
 
 .autolabel-tab:hover,
 .autolabel-tab:focus-visible {
-  color: var(--autolabel-text);
-  border-color: var(--autolabel-border);
+  color: var(--al-text);
   outline: none;
 }
 
 .autolabel-tab[aria-selected="true"] {
-  border-color: rgba(32, 119, 181, 0.35);
-  background: var(--autolabel-surface);
-  color: #1676b1;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  border-color: var(--al-border);
+  background: var(--al-surface);
+  color: var(--al-accent);
+  box-shadow: var(--al-shadow-sm);
 }
 
-html.darkMode_yes .autolabel-tab[aria-selected="true"],
-html[class*="darkMode_yes"] .autolabel-tab[aria-selected="true"],
-html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
-  color: #7cc7ff;
-}
-
-@media (prefers-color-scheme: dark) {
-  html.darkMode_auto .autolabel-tab[aria-selected="true"],
-  html[class*="darkMode_auto"] .autolabel-tab[aria-selected="true"] {
-    color: #7cc7ff;
-  }
-}
-
-.autolabel-section {
-  display: grid;
-  gap: 1rem;
-  scroll-margin-top: 5rem;
-}
-
-.autolabel-tab-panel[hidden] {
-  display: none;
-}
-
+/* ---------- feedback ---------- */
 .autolabel-feedback {
-  border: 1px solid rgba(32, 119, 181, 0.28);
-  border-radius: 8px;
-  padding: 0.75rem 0.9rem;
-  background: rgba(32, 119, 181, 0.08);
-  color: var(--autolabel-text);
+  padding: 0.65rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--al-accent) 32%, var(--al-border));
+  border-radius: var(--al-radius-sm);
+  background: var(--al-accent-soft);
+  color: var(--al-text);
+  font-size: 0.9rem;
 }
 
 .autolabel-feedback--error {
-  border-color: rgba(198, 60, 60, 0.36);
-  background: rgba(198, 60, 60, 0.1);
+  border-color: color-mix(in srgb, var(--al-danger) 45%, var(--al-border));
+  background: var(--al-danger-soft);
 }
 
-.autolabel-section__heading h2,
-.autolabel-card h2,
-.autolabel-card h3 {
-  margin: 0 0 0.4rem;
-  color: var(--autolabel-text);
+/* ---------- sections & cards ---------- */
+.autolabel-section {
+  display: grid;
+  gap: 1rem;
+  scroll-margin-top: 4.5rem;
 }
 
-.autolabel-section__heading p,
-.autolabel-card p,
-.autolabel-card span,
-.autolabel-card strong,
-.autolabel-card label {
-  color: var(--autolabel-text);
+.autolabel-tab-panel[hidden] { display: none !important; }
+
+.autolabel-section__heading h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.12rem;
+}
+
+.autolabel-section__heading p {
+  margin: 0;
+  color: var(--al-muted);
+  font-size: 0.9rem;
 }
 
 .autolabel-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  align-items: start;
 }
 
+.autolabel-card,
+.autolabel-list__item {
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius);
+  background: var(--al-surface);
+  box-shadow: var(--al-shadow-sm);
+}
+
+.autolabel-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem 1.15rem;
+}
+
+.autolabel-card h2,
+.autolabel-card h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.autolabel-card > p { margin: 0; }
+
+.autolabel-card p,
+.autolabel-card span,
+.autolabel-card strong,
+.autolabel-card label {
+  color: var(--al-text);
+}
+
+/* ---------- buttons ---------- */
+.autolabel-page .btn {
+  border-radius: var(--al-radius-sm);
+  line-height: 1.5;
+  transition: filter 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.autolabel-page .btn--primary,
+.autolabel-page .btn--primary:visited {
+  background: var(--al-accent);
+  border: 1px solid var(--al-accent);
+  color: #fff;
+  font-weight: 600;
+  background-image: none;
+  text-shadow: none;
+}
+
+.autolabel-page .btn--primary:hover,
+.autolabel-page .btn--primary:focus-visible {
+  background: var(--al-accent-strong);
+  border-color: var(--al-accent-strong);
+  color: #fff;
+}
+
+.autolabel-page .btn--primary:disabled {
+  opacity: 0.55;
+}
+
+.btn--small {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.83rem;
+  line-height: 1.35;
+}
+
+.btn--danger {
+  border-color: color-mix(in srgb, var(--al-danger) 55%, var(--al-border));
+  color: var(--al-danger);
+}
+
+.autolabel-page .btn--danger:hover {
+  background: var(--al-danger-soft);
+  border-color: var(--al-danger);
+  color: var(--al-danger);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.badge--ok {
+  background: color-mix(in srgb, var(--al-ok) 15%, transparent);
+  color: var(--al-ok);
+}
+
+.badge--muted {
+  background: color-mix(in srgb, var(--al-muted) 16%, transparent);
+  color: var(--al-muted);
+}
+
+.badge--warn {
+  background: color-mix(in srgb, var(--al-warn) 16%, transparent);
+  color: var(--al-warn);
+}
+
+/* ---------- forms ---------- */
 .autolabel-form,
 .autolabel-list {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.85rem;
 }
 
-.autolabel-form label {
+.autolabel-form label:not(.checkbox):not(.autolabel-choice):not(.autolabel-tag-choice) {
   display: grid;
   gap: 0.35rem;
+}
+
+.autolabel-form label:not(.checkbox):not(.autolabel-choice):not(.autolabel-tag-choice) > span:first-child,
+.autolabel-field-label {
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 .autolabel-form input[type="text"],
@@ -217,299 +338,494 @@ html[class*="theme_dark"] .autolabel-tab[aria-selected="true"] {
 .autolabel-form input[type="email"],
 .autolabel-form input[type="number"],
 .autolabel-form input[type="url"],
+.autolabel-form input[type="search"],
 .autolabel-form select,
 .autolabel-form textarea {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid var(--autolabel-input-border);
-  border-radius: 10px;
-  background: var(--autolabel-input-bg);
-  color: var(--autolabel-text);
-  padding: 0.68rem 0.78rem;
+  border: 1px solid var(--al-input-border);
+  border-radius: var(--al-radius-sm);
+  background: var(--al-input-bg);
+  color: var(--al-text);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.92rem;
 }
 
 .autolabel-form input::placeholder,
 .autolabel-form textarea::placeholder {
-  color: var(--autolabel-text-muted);
+  color: var(--al-muted);
 }
 
 .autolabel-form input:focus,
 .autolabel-form select:focus,
 .autolabel-form textarea:focus {
   outline: none;
-  border-color: rgba(32, 119, 181, 0.7);
-  box-shadow: 0 0 0 3px rgba(32, 119, 181, 0.18);
+  border-color: var(--al-accent);
+  box-shadow: 0 0 0 3px var(--al-accent-soft);
+  color: var(--al-text);
 }
 
-.autolabel-field-label {
-  font-weight: 600;
+/* keep untouched-but-invalid controls neutral instead of alarming red */
+.autolabel-page .autolabel-form input:invalid,
+.autolabel-page .autolabel-form select:invalid,
+.autolabel-page .autolabel-form textarea:invalid {
+  border-color: var(--al-input-border);
+  box-shadow: none;
 }
 
-.autolabel-subsection {
+.autolabel-page .autolabel-form input:focus:invalid,
+.autolabel-page .autolabel-form select:focus:invalid,
+.autolabel-page .autolabel-form textarea:focus:invalid {
+  border-color: var(--al-accent);
+  box-shadow: 0 0 0 3px var(--al-accent-soft);
+}
+
+.autolabel-form input[type="checkbox"],
+.autolabel-form input[type="radio"],
+.autolabel-card input[type="checkbox"],
+.autolabel-card input[type="radio"] {
+  accent-color: var(--al-accent);
+}
+
+.autolabel-form__columns {
   display: grid;
   gap: 0.85rem;
-  border: 1px solid var(--autolabel-border);
-  border-radius: 8px;
-  padding: 0.9rem;
-  background: var(--autolabel-surface-alt);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+}
+
+.autolabel-form__columns--metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
+}
+
+.autolabel-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.checkbox {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  min-height: auto;
+  padding: 0;
+}
+
+.autolabel-help {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--al-muted) !important;
+}
+
+.autolabel-help a { color: var(--al-accent); }
+
+.autolabel-help--danger {
+  color: var(--al-danger) !important;
+}
+
+/* collapsible blocks (advanced settings, raw payloads) */
+.autolabel-advanced {
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius-sm);
+  background: var(--al-surface-alt);
+  padding: 0.6rem 0.8rem;
+}
+
+.autolabel-advanced > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--al-text);
+  list-style: none;
+}
+
+.autolabel-advanced > summary::before {
+  content: "";
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid var(--al-muted);
+  border-bottom: 2px solid var(--al-muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  margin-left: 0.1rem;
+}
+
+.autolabel-advanced[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.autolabel-advanced > summary::-webkit-details-marker { display: none; }
+
+.autolabel-advanced[open] > summary { margin-bottom: 0.7rem; }
+
+.autolabel-advanced__body {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.autolabel-details > summary {
+  cursor: pointer;
+  color: var(--al-accent);
+  font-size: 0.84rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.autolabel-details > summary::-webkit-details-marker { display: none; }
+
+.autolabel-details[open] > summary { margin-bottom: 0.4rem; }
+
+/* grouped settings blocks (Bark / Email / Events) */
+.autolabel-subsection {
+  display: grid;
+  gap: 0.7rem;
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius-sm);
+  padding: 0.85rem;
+  background: var(--al-surface-alt);
 }
 
 .autolabel-subsection h3 {
   margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
 }
 
-.autolabel-form input[type="checkbox"] {
-  accent-color: #1676b1;
-}
+/* ---------- choice & tag pickers ---------- */
+.autolabel-rule-tags { display: grid; gap: 0.35rem; }
 
 .autolabel-choice-row,
 .autolabel-notification-tags {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .autolabel-choice-row {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
 }
 
 .autolabel-choice,
 .autolabel-tag-choice {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  min-height: auto;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius-sm);
+  background: var(--al-input-bg);
+  font-size: 0.88rem;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
-.autolabel-choice {
-  min-height: 2.5rem;
-  border: 1px solid var(--autolabel-border);
-  border-radius: 8px;
-  padding: 0.6rem 0.75rem;
-  background: var(--autolabel-input-bg);
+.autolabel-choice:hover,
+.autolabel-tag-choice:hover {
+  border-color: var(--al-border-strong);
 }
 
-.autolabel-tag-picker {
-  display: grid;
-  gap: 0.75rem;
+.autolabel-choice:has(input:checked),
+.autolabel-tag-choice:has(input:checked) {
+  border-color: color-mix(in srgb, var(--al-accent) 60%, var(--al-border));
+  background: var(--al-accent-soft);
 }
+
+.autolabel-tag-picker { display: grid; gap: 0.65rem; }
 
 .autolabel-tag-picker__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.65rem;
   flex-wrap: wrap;
 }
 
 .autolabel-tag-picker__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: 0.4rem;
 }
 
-.autolabel-tag-choice {
-  min-height: 2.4rem;
-  border: 1px solid var(--autolabel-border);
-  border-radius: 8px;
-  padding: 0.55rem 0.7rem;
-  background: var(--autolabel-input-bg);
+.autolabel-tag-choice span {
   overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
-.autolabel-tag-choice:has(input:checked) {
-  border-color: rgba(32, 119, 181, 0.65);
-  background: rgba(32, 119, 181, 0.1);
-}
-
-.autolabel-form__columns {
-  display: grid;
-  gap: 0.9rem;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-
-.autolabel-checkboxes {
+/* ---------- actions ---------- */
+.autolabel-actions,
+.autolabel-inline-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.8rem;
-}
-
-.checkbox {
-  display: inline-flex;
-  gap: 0.4rem;
+  gap: 0.45rem;
   align-items: center;
 }
 
-.autolabel-actions,
-.autolabel-inline-actions,
-.autolabel-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.autolabel-actions > form,
+.autolabel-inline-actions > form {
+  display: contents;
 }
 
 .autolabel-actions--sticky {
   position: sticky;
-  bottom: 0.75rem;
-  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
   z-index: 4;
-  align-items: center;
-  margin: 0.1rem -0.5rem -0.5rem;
-  border: 1px solid var(--autolabel-border);
-  border-radius: 10px;
-  padding: 0.65rem;
-  background: var(--autolabel-surface);
-  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.1);
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius-sm);
+  background: var(--al-surface);
+  box-shadow: var(--al-shadow-md);
 }
 
-.btn--small {
-  padding: 0.35rem 0.6rem;
-  font-size: 0.85rem;
+/* ---------- stats ---------- */
+.autolabel-stat-grid {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  grid-auto-rows: 1fr;
+}
+
+.autolabel-stat {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--al-border);
+  border-radius: var(--al-radius-sm);
+  background: var(--al-surface-alt);
+  min-width: 0;
+}
+
+.autolabel-stat__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--al-muted);
+}
+
+.autolabel-stat__value {
+  font-size: 1.3rem;
+  font-weight: 700;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
-.autolabel-diagnostic-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.25rem 0 0.75rem;
+.autolabel-stat__value--small {
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
+/* ---------- lists ---------- */
 .autolabel-list__item {
-  padding: 0.9rem;
-  background: var(--autolabel-surface-alt);
+  padding: 0.8rem 0.9rem;
+  background: var(--al-surface);
+  box-shadow: none;
 }
 
 .autolabel-list__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.35rem;
+  gap: 0.65rem;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.15rem 0.55rem;
+.autolabel-list__title {
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.autolabel-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  margin: 0.25rem 0 0;
+  color: var(--al-muted);
   font-size: 0.85rem;
 }
 
-.badge--ok {
-  background: rgba(22, 164, 117, 0.16);
-  color: #0b8d5e;
+.autolabel-list__meta span { color: var(--al-muted); }
+
+.autolabel-list__item .autolabel-inline-actions {
+  margin-top: 0.6rem;
 }
 
-html.darkMode_yes .badge--ok,
-html[class*="darkMode_yes"] .badge--ok,
-html[class*="theme_dark"] .badge--ok {
-  color: #86efc3;
+.autolabel-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  html.darkMode_auto .badge--ok,
-  html[class*="darkMode_auto"] .badge--ok {
-    color: #86efc3;
-  }
+.autolabel-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.5rem;
+  border: 1px solid var(--al-border);
+  border-radius: 999px;
+  background: var(--al-surface-alt);
+  color: var(--al-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
-.badge--muted {
-  background: rgba(113, 113, 122, 0.16);
-  color: var(--autolabel-text-muted);
+/* ---------- empty state ---------- */
+.autolabel-empty {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+  padding: 1.1rem;
+  border: 1px dashed var(--al-border-strong);
+  border-radius: var(--al-radius);
+  background: var(--al-surface-alt);
 }
 
-.autolabel-help {
-  margin: -0.25rem 0 0;
-  font-size: 0.9rem;
-  color: var(--autolabel-text-muted);
-}
+.autolabel-empty p { margin: 0; color: var(--al-muted); }
 
-.autolabel-help--danger {
-  color: #dc2626;
-}
-
-html.darkMode_yes .autolabel-help--danger,
-html[class*="darkMode_yes"] .autolabel-help--danger,
-html[class*="theme_dark"] .autolabel-help--danger {
-  color: #fca5a5;
-}
-
-@media (prefers-color-scheme: dark) {
-  html.darkMode_auto .autolabel-help--danger,
-  html[class*="darkMode_auto"] .autolabel-help--danger {
-    color: #fca5a5;
-  }
-}
-
+/* ---------- queue & progress ---------- */
 .autolabel-progress {
   position: relative;
   overflow: hidden;
-  height: 0.7rem;
+  height: 0.5rem;
   border-radius: 999px;
-  background: rgba(113, 113, 122, 0.16);
+  background: color-mix(in srgb, var(--al-muted) 18%, transparent);
 }
 
 .autolabel-progress__bar {
   height: 100%;
   width: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, #1676b1, #16a475);
+  background: linear-gradient(90deg, var(--al-accent), #16a475);
   transition: width 0.25s ease;
 }
 
+/* ---------- diagnostics ---------- */
+.autolabel-diagnostic-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+/* ---------- code & pre ---------- */
 .autolabel-pre,
 .autolabel-card code {
-  color: var(--autolabel-text);
-  background: var(--autolabel-code-bg);
+  color: var(--al-text);
+  background: var(--al-code-bg);
 }
 
 .autolabel-card code {
   display: inline-block;
   max-width: 100%;
+  padding: 0.05rem 0.35rem;
+  border-radius: 5px;
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
+  font-size: 0.85em;
 }
 
 .autolabel-pre {
   margin: 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--al-radius-sm);
+  font-size: 0.8rem;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 0.85rem;
-  border-radius: 10px;
-  padding: 0.8rem;
+  overflow-wrap: anywhere;
+  max-height: 18rem;
+  overflow: auto;
 }
 
-.autolabel-chip {
-  display: inline-flex;
-  align-items: center;
-  margin: 0.1rem 0.25rem 0.1rem 0;
-  padding: 0.12rem 0.4rem;
-  border-radius: 999px;
-  color: var(--autolabel-muted);
-  background: rgba(113, 113, 122, 0.14);
-  font-size: 0.85rem;
+/* ---------- responsive ---------- */
+@media (max-width: 720px) {
+  .autolabel-hero { flex-direction: column; }
+  .autolabel-tabs { top: 0.25rem; }
+  .autolabel-stat__value { font-size: 1.15rem; }
 }
 
-.btn--danger {
-  border-color: #c63c3c;
-  color: #a42a2a;
+/* ---------- dark-mode component overrides ---------- */
+html.darkMode_yes .autolabel-page .btn,
+html[class*="darkMode_yes"] .autolabel-page .btn,
+html[class*="theme_dark"] .autolabel-page .btn {
+  background: var(--al-surface-alt);
+  background-image: none;
+  border-color: var(--al-border-strong);
+  color: var(--al-text);
+  text-shadow: none;
 }
 
-html.darkMode_yes .btn--danger,
-html[class*="darkMode_yes"] .btn--danger,
-html[class*="theme_dark"] .btn--danger {
-  color: #fda4a4;
+html.darkMode_yes .autolabel-page .btn:hover,
+html[class*="darkMode_yes"] .autolabel-page .btn:hover,
+html[class*="theme_dark"] .autolabel-page .btn:hover {
+  background: var(--al-surface);
+  border-color: var(--al-accent);
+  color: var(--al-text);
+}
+
+html.darkMode_yes .autolabel-page .btn--primary,
+html[class*="darkMode_yes"] .autolabel-page .btn--primary,
+html[class*="theme_dark"] .autolabel-page .btn--primary {
+  background: #1773ab;
+  border-color: #1773ab;
+  color: #fff;
+}
+
+html.darkMode_yes .autolabel-page .btn--primary:hover,
+html[class*="darkMode_yes"] .autolabel-page .btn--primary:hover,
+html[class*="theme_dark"] .autolabel-page .btn--primary:hover {
+  background: #1c86c5;
+  border-color: #1c86c5;
+  color: #fff;
+}
+
+html.darkMode_yes .autolabel-page .btn--danger:hover,
+html[class*="darkMode_yes"] .autolabel-page .btn--danger:hover,
+html[class*="theme_dark"] .autolabel-page .btn--danger:hover {
+  background: var(--al-danger-soft);
+  border-color: var(--al-danger);
+  color: var(--al-danger);
 }
 
 @media (prefers-color-scheme: dark) {
-  html.darkMode_auto .btn--danger,
-  html[class*="darkMode_auto"] .btn--danger {
-    color: #fda4a4;
+  html.darkMode_auto .autolabel-page .btn,
+  html[class*="darkMode_auto"] .autolabel-page .btn {
+    background: var(--al-surface-alt);
+    background-image: none;
+    border-color: var(--al-border-strong);
+    color: var(--al-text);
+    text-shadow: none;
   }
-}
 
-@media (max-width: 720px) {
-  .autolabel-hero {
-    flex-direction: column;
+  html.darkMode_auto .autolabel-page .btn:hover,
+  html[class*="darkMode_auto"] .autolabel-page .btn:hover {
+    background: var(--al-surface);
+    border-color: var(--al-accent);
+    color: var(--al-text);
+  }
+
+  html.darkMode_auto .autolabel-page .btn--primary,
+  html[class*="darkMode_auto"] .autolabel-page .btn--primary {
+    background: #1773ab;
+    border-color: #1773ab;
+    color: #fff;
+  }
+
+  html.darkMode_auto .autolabel-page .btn--primary:hover,
+  html[class*="darkMode_auto"] .autolabel-page .btn--primary:hover {
+    background: #1c86c5;
+    border-color: #1c86c5;
+    color: #fff;
+  }
+
+  html.darkMode_auto .autolabel-page .btn--danger:hover,
+  html[class*="darkMode_auto"] .autolabel-page .btn--danger:hover {
+    background: var(--al-danger-soft);
+    border-color: var(--al-danger);
+    color: var(--al-danger);
   }
 }

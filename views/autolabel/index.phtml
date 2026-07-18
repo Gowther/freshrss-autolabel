@@ -172,7 +172,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 
 		<div class="autolabel-grid">
 			<div class="autolabel-card">
-				<h3><?= $profileForm['id'] === '' ? _t('ext.auto_label.profile.create') : _t('ext.auto_label.profile.edit') ?></h3>
+				<h3><?= ($profileForm['id'] ?? '') === '' ? _t('ext.auto_label.profile.create') : _t('ext.auto_label.profile.edit') ?></h3>
 				<form method="post" action="<?= _url('autolabel', 'saveProfile') ?>" class="autolabel-form" data-autolabel-profile-form>
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 					<input type="hidden" name="profile_id" value="<?= $escape($profileForm['id'] ?? '') ?>" />
@@ -219,24 +219,34 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						<input type="password" name="api_key" value="<?= $escape($profileForm['api_key'] ?? '') ?>" autocomplete="off" />
 					</label>
 
-					<div class="autolabel-form__columns">
-						<label>
-							<span><?= _t('ext.auto_label.profile.fields.timeout_seconds') ?></span>
-							<input type="number" name="timeout_seconds" min="3" max="600" value="<?= $escape($profileForm['timeout_seconds'] ?? 60) ?>" />
+					<div class="autolabel-checkboxes">
+						<label class="checkbox">
+							<input type="checkbox" name="enabled" value="1" <?= !empty($profileForm['enabled']) ? 'checked' : '' ?> />
+							<span><?= _t('ext.auto_label.profile.fields.enabled') ?></span>
 						</label>
-
-						<label>
-							<span><?= _t('ext.auto_label.profile.fields.content_max_chars') ?></span>
-							<input type="number" name="content_max_chars" min="500" max="20000" value="<?= $escape($profileForm['content_max_chars'] ?? 6000) ?>" />
-						</label>
-
-						<label>
-							<span><?= _t('ext.auto_label.profile.fields.batch_size') ?></span>
-							<input type="number" name="batch_size" min="1" max="200" value="<?= $escape($profileForm['batch_size'] ?? 25) ?>" />
-						</label>
-
 					</div>
-					<p class="autolabel-help"><?= _t('ext.auto_label.profile.help.batch_size') ?></p>
+
+					<details class="autolabel-advanced">
+						<summary><?= _t('ext.auto_label.layout.advanced') ?></summary>
+						<div class="autolabel-advanced__body">
+						<div class="autolabel-form__columns">
+							<label>
+								<span><?= _t('ext.auto_label.profile.fields.timeout_seconds') ?></span>
+								<input type="number" name="timeout_seconds" min="3" max="600" value="<?= $escape($profileForm['timeout_seconds'] ?? 60) ?>" />
+							</label>
+
+							<label>
+								<span><?= _t('ext.auto_label.profile.fields.content_max_chars') ?></span>
+								<input type="number" name="content_max_chars" min="500" max="20000" value="<?= $escape($profileForm['content_max_chars'] ?? 6000) ?>" />
+							</label>
+
+							<label>
+								<span><?= _t('ext.auto_label.profile.fields.batch_size') ?></span>
+								<input type="number" name="batch_size" min="1" max="200" value="<?= $escape($profileForm['batch_size'] ?? 25) ?>" />
+							</label>
+
+						</div>
+						<p class="autolabel-help"><?= _t('ext.auto_label.profile.help.batch_size') ?></p>
 
 					<div data-autolabel-profile-panel="llm">
 						<label>
@@ -292,13 +302,8 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 							<textarea name="default_instruction" rows="3"><?= $escape($profileForm['default_instruction'] ?? '') ?></textarea>
 						</label>
 					</div>
-
-					<div class="autolabel-checkboxes">
-						<label class="checkbox">
-							<input type="checkbox" name="enabled" value="1" <?= !empty($profileForm['enabled']) ? 'checked' : '' ?> />
-							<span><?= _t('ext.auto_label.profile.fields.enabled') ?></span>
-						</label>
-					</div>
+						</div>
+					</details>
 
 					<div class="autolabel-actions autolabel-actions--sticky">
 						<button class="btn btn--primary" type="submit"><?= _t('ext.auto_label.profile.actions.save') ?></button>
@@ -312,24 +317,26 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<div class="autolabel-card">
 				<h3><?= _t('ext.auto_label.profile.available') ?></h3>
 				<?php if (count($profiles) === 0): ?>
-					<p><?= _t('ext.auto_label.misc.none_yet') ?></p>
+					<div class="autolabel-empty"><p><?= _t('ext.auto_label.misc.none_yet') ?></p></div>
 				<?php else: ?>
 					<div class="autolabel-list">
 						<?php foreach ($profiles as $profile): ?>
 							<article class="autolabel-list__item">
 								<div class="autolabel-list__header">
-									<strong><?= $escape($profile['name']) ?></strong>
+									<div class="autolabel-list__title"><?= $escape($profile['name']) ?></div>
 									<span class="badge <?= !empty($profile['enabled']) ? 'badge--ok' : 'badge--muted' ?>">
 										<?= !empty($profile['enabled']) ? _t('ext.auto_label.misc.enabled') : _t('ext.auto_label.misc.disabled') ?>
 									</span>
 								</div>
-								<p><?= $escape($profile['provider']) ?> · <?= $escape($profile['model']) ?></p>
-								<p><?= _t('ext.auto_label.profile.fields.mode') ?>: <?= !empty($profile['supports_embedding']) ? _t('ext.auto_label.misc.embedding') : _t('ext.auto_label.misc.llm') ?></p>
-								<p><?= _t('ext.auto_label.profile.fields.batch_size') ?>: <?= $escape((string)($profile['batch_size'] ?? 25)) ?></p>
-								<?php if (!empty($profile['supports_embedding'])): ?>
-									<p><?= _t('ext.auto_label.profile.fields.embedding_dimensions') ?>: <?= $escape((string)($profile['embedding_dimensions'] ?? 0)) ?></p>
-									<p><?= _t('ext.auto_label.profile.fields.embedding_num_ctx') ?>: <?= $escape((string)($profile['embedding_num_ctx'] ?? 0)) ?></p>
-								<?php endif; ?>
+								<div class="autolabel-list__meta">
+									<span><?= $escape($profile['provider']) ?> · <?= $escape($profile['model']) ?></span>
+									<span><?= !empty($profile['supports_embedding']) ? _t('ext.auto_label.misc.embedding') : _t('ext.auto_label.misc.llm') ?></span>
+									<span><?= _t('ext.auto_label.profile.fields.batch_size') ?>: <?= $escape((string)($profile['batch_size'] ?? 25)) ?></span>
+									<?php if (!empty($profile['supports_embedding'])): ?>
+										<span><?= _t('ext.auto_label.profile.fields.embedding_dimensions') ?>: <?= $escape((string)($profile['embedding_dimensions'] ?? 0)) ?></span>
+										<span><?= _t('ext.auto_label.profile.fields.embedding_num_ctx') ?>: <?= $escape((string)($profile['embedding_num_ctx'] ?? 0)) ?></span>
+									<?php endif; ?>
+								</div>
 								<div class="autolabel-inline-actions">
 									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_profile', $profile['id']) ?>#autolabel-profiles" data-autolabel-panel-link="profiles"><?= _t('ext.auto_label.misc.edit') ?></a>
 									<form method="post" action="<?= _url('autolabel', 'toggleProfile') ?>">
@@ -366,8 +373,8 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 
 		<div class="autolabel-grid">
 			<div class="autolabel-card">
-				<h3><?= $ruleForm['id'] === '' ? _t('ext.auto_label.rule.create') : _t('ext.auto_label.rule.edit') ?></h3>
-				<form method="post" action="<?= _url('autolabel', 'saveRule') ?>" class="autolabel-form" data-autolabel-rule-form>
+				<h3><?= ($ruleForm['id'] ?? '') === '' ? _t('ext.auto_label.rule.create') : _t('ext.auto_label.rule.edit') ?></h3>
+				<form method="post" action="<?= _url('autolabel', 'saveRule') ?>" class="autolabel-form" data-autolabel-rule-form data-no-tags-message="<?= $escape(_t('ext.auto_label.rule.error.no_tags')) ?>">
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 					<input type="hidden" name="rule_id" value="<?= $escape($ruleForm['id'] ?? '') ?>" />
 
@@ -376,20 +383,27 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						<input type="text" name="name" value="<?= $escape($ruleForm['name'] ?? '') ?>" data-autolabel-rule-name />
 					</label>
 
-					<label>
-						<span><?= _t('ext.auto_label.rule.fields.target_tags') ?></span>
-						<select name="target_tags[]" required multiple <?= count($availableTags) === 0 ? 'disabled' : '' ?> size="<?= $escape((string)max(4, min(10, count($availableTags) > 0 ? count($availableTags) : 4))) ?>" data-autolabel-target-tags>
-							<?php foreach ($availableTags as $tagName): ?>
-								<option
-									value="<?= $escape($tagName) ?>"
-									<?= in_array($tagName, is_array($ruleForm['target_tags'] ?? null) ? $ruleForm['target_tags'] : [], true) ? 'selected' : '' ?>
-								>#<?= $escape($tagName) ?></option>
-							<?php endforeach; ?>
-						</select>
-					</label>
-					<?php if (count($availableTags) === 0): ?>
-						<p class="autolabel-help"><?= _t('ext.auto_label.rule.help.no_tags') ?></p>
-					<?php endif; ?>
+					<div class="autolabel-rule-tags">
+						<span class="autolabel-field-label"><?= _t('ext.auto_label.rule.fields.target_tags') ?></span>
+						<?php if (count($availableTags) > 0): ?>
+							<div class="autolabel-tag-picker__grid" data-autolabel-target-tags>
+								<?php foreach ($availableTags as $tagName): ?>
+									<label class="autolabel-tag-choice">
+										<input
+											type="checkbox"
+											name="target_tags[]"
+											value="<?= $escape($tagName) ?>"
+											<?= in_array($tagName, is_array($ruleForm['target_tags'] ?? null) ? $ruleForm['target_tags'] : [], true) ? 'checked' : '' ?>
+										/>
+										<span>#<?= $escape($tagName) ?></span>
+									</label>
+								<?php endforeach; ?>
+							</div>
+						<?php else: ?>
+							<div data-autolabel-target-tags></div>
+							<p class="autolabel-help"><?= _t('ext.auto_label.rule.help.no_tags') ?></p>
+						<?php endif; ?>
+					</div>
 					<p class="autolabel-help"><?= _t('ext.auto_label.rule.help.target_tags') ?></p>
 					<?php if ($tagManagementUrl !== ''): ?>
 						<p class="autolabel-help">
@@ -422,15 +436,17 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 						</select>
 					</label>
 
-					<label class="checkbox">
-						<input type="checkbox" name="enabled" value="1" <?= !empty($ruleForm['enabled']) ? 'checked' : '' ?> />
-						<span><?= _t('ext.auto_label.rule.fields.enabled') ?></span>
-					</label>
+					<div class="autolabel-checkboxes">
+						<label class="checkbox">
+							<input type="checkbox" name="enabled" value="1" <?= !empty($ruleForm['enabled']) ? 'checked' : '' ?> />
+							<span><?= _t('ext.auto_label.rule.fields.enabled') ?></span>
+						</label>
 
-					<label class="checkbox">
-						<input type="checkbox" name="mark_read_on_match" value="1" <?= !empty($ruleForm['mark_read_on_match']) ? 'checked' : '' ?> />
-						<span><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span>
-					</label>
+						<label class="checkbox">
+							<input type="checkbox" name="mark_read_on_match" value="1" <?= !empty($ruleForm['mark_read_on_match']) ? 'checked' : '' ?> />
+							<span><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span>
+						</label>
+					</div>
 					<p class="autolabel-help"><?= _t('ext.auto_label.rule.help.mark_read_on_match') ?></p>
 
 					<div data-autolabel-mode-panel="llm">
@@ -472,29 +488,41 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			<div class="autolabel-card">
 				<h3><?= _t('ext.auto_label.rule.current') ?></h3>
 				<?php if (count($rules) === 0): ?>
-					<p><?= _t('ext.auto_label.misc.none_yet') ?></p>
+					<div class="autolabel-empty"><p><?= _t('ext.auto_label.misc.none_yet') ?></p></div>
 				<?php else: ?>
 					<div class="autolabel-list">
 						<?php foreach ($rules as $rule): ?>
 							<?php $linkedProfile = $profilesById[$rule['profile_id']] ?? null; ?>
+							<?php $ruleTags = is_array($rule['target_tags'] ?? null) ? $rule['target_tags'] : []; ?>
 							<article class="autolabel-list__item">
 								<div class="autolabel-list__header">
-									<strong><?= $escape(implode(', ', array_map(static fn ($tag): string => '#' . (string)$tag, is_array($rule['target_tags'] ?? null) ? $rule['target_tags'] : []))) ?></strong>
+									<div class="autolabel-list__title">
+										<?= $escape(trim((string)($rule['name'] ?? '')) !== '' ? $rule['name'] : implode(', ', array_map(static fn ($tag): string => '#' . (string)$tag, $ruleTags))) ?>
+									</div>
 									<span class="badge <?= !empty($rule['enabled']) ? 'badge--ok' : 'badge--muted' ?>">
 										<?= !empty($rule['enabled']) ? _t('ext.auto_label.misc.enabled') : _t('ext.auto_label.misc.disabled') ?>
 									</span>
 								</div>
-								<p><?= $escape($rule['name']) ?> · <?= $escape($rule['mode']) ?></p>
-								<p>
-									<?= _t('ext.auto_label.rule.fields.profile') ?>:
-									<?= $escape(is_array($linkedProfile) ? $linkedProfile['name'] : $rule['profile_id']) ?>
-									<?php if (is_array($linkedProfile) && empty($linkedProfile['enabled'])): ?>
-										(<?= _t('ext.auto_label.misc.disabled') ?>)
-									<?php endif; ?>
-								</p>
-								<?php if (!empty($rule['mark_read_on_match'])): ?>
-									<p><span class="badge badge--muted"><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span></p>
+								<?php if (count($ruleTags) > 0): ?>
+									<div class="autolabel-chip-row">
+										<?php foreach ($ruleTags as $tagName): ?>
+											<span class="autolabel-chip">#<?= $escape($tagName) ?></span>
+										<?php endforeach; ?>
+									</div>
 								<?php endif; ?>
+								<div class="autolabel-list__meta">
+									<span><?= $escape($rule['mode']) ?></span>
+									<span>
+										<?= _t('ext.auto_label.rule.fields.profile') ?>:
+										<?= $escape(is_array($linkedProfile) ? $linkedProfile['name'] : $rule['profile_id']) ?>
+										<?php if (is_array($linkedProfile) && empty($linkedProfile['enabled'])): ?>
+											(<?= _t('ext.auto_label.misc.disabled') ?>)
+										<?php endif; ?>
+									</span>
+									<?php if (!empty($rule['mark_read_on_match'])): ?>
+										<span class="badge badge--muted"><?= _t('ext.auto_label.rule.fields.mark_read_on_match') ?></span>
+									<?php endif; ?>
+								</div>
 								<div class="autolabel-inline-actions">
 									<a class="btn btn--small" href="<?= _url('autolabel', 'index', 'edit_rule', $rule['id']) ?>#autolabel-rules" data-autolabel-panel-link="rules"><?= _t('ext.auto_label.misc.edit') ?></a>
 									<form method="post" action="<?= _url('autolabel', 'toggleRule') ?>">
@@ -525,7 +553,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 
 		<div class="autolabel-grid">
 			<div class="autolabel-card">
-				<h2><?= _t('ext.auto_label.tools.dry_run') ?></h2>
+				<h3><?= _t('ext.auto_label.tools.dry_run') ?></h3>
 				<form method="post" action="<?= _url('autolabel', 'dryRun') ?>" class="autolabel-form">
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 					<label>
@@ -556,7 +584,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			</div>
 
 			<div class="autolabel-card">
-				<h2><?= _t('ext.auto_label.tools.backfill') ?></h2>
+				<h3><?= _t('ext.auto_label.tools.backfill') ?></h3>
 				<form method="post" action="<?= _url('autolabel', 'backfill') ?>" class="autolabel-form">
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 					<label>
@@ -585,42 +613,40 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			</div>
 
 			<div class="autolabel-card">
-				<h2><?= _t('ext.auto_label.queue.title') ?></h2>
-				<p><?= _t('ext.auto_label.queue.subtitle') ?></p>
-				<p><?= _t('ext.auto_label.queue.pending_entries') ?>: <span data-autolabel-queue-pending-entries><?= $escape((string)($queueSnapshot['pending_entries'] ?? 0)) ?></span></p>
-				<p><?= _t('ext.auto_label.queue.pending_backfills') ?>: <span data-autolabel-queue-pending-backfills><?= $escape((string)($queueSnapshot['pending_backfills'] ?? 0)) ?></span></p>
-				<p><?= _t('ext.auto_label.queue.pending_backfill_entries') ?>: <span data-autolabel-queue-pending-backfill-entries><?= $escape((string)($queueSnapshot['pending_backfill_entries'] ?? 0)) ?></span></p>
-				<?php if (is_array($queueSnapshot['last_run'] ?? null)): ?>
-					<p>
-						<?= _t('ext.auto_label.queue.last_run') ?>:
-						<span data-autolabel-queue-last-run><?= $escape((string)($queueSnapshot['last_run']['at'] ?? '')) ?></span>
-					</p>
-				<?php else: ?>
-					<p>
-						<?= _t('ext.auto_label.queue.last_run') ?>:
-						<span data-autolabel-queue-last-run><?= $escape('') ?></span>
-					</p>
-				<?php endif; ?>
-				<?php if ($queueCronUrl !== ''): ?>
-					<p class="autolabel-help"><?= _t('ext.auto_label.queue.cron_url') ?>: <code><?= $escape($queueCronUrl) ?></code></p>
-				<?php endif; ?>
-				<?php if (!$queueConcurrencyAvailable): ?>
-					<p class="autolabel-help autolabel-help--danger"><?= _t('ext.auto_label.queue.concurrency_unavailable') ?></p>
-				<?php endif; ?>
+				<h3><?= _t('ext.auto_label.queue.title') ?></h3>
+				<p class="autolabel-help"><?= _t('ext.auto_label.queue.subtitle') ?></p>
+				<div class="autolabel-stat-grid">
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.queue.pending_entries') ?></span>
+						<span class="autolabel-stat__value" data-autolabel-queue-pending-entries><?= $escape((string)($queueSnapshot['pending_entries'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.queue.pending_backfills') ?></span>
+						<span class="autolabel-stat__value" data-autolabel-queue-pending-backfills><?= $escape((string)($queueSnapshot['pending_backfills'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.queue.pending_backfill_entries') ?></span>
+						<span class="autolabel-stat__value" data-autolabel-queue-pending-backfill-entries><?= $escape((string)($queueSnapshot['pending_backfill_entries'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.queue.last_run') ?></span>
+						<span class="autolabel-stat__value autolabel-stat__value--small" data-autolabel-queue-last-run><?= $escape(is_array($queueSnapshot['last_run'] ?? null) ? (string)($queueSnapshot['last_run']['at'] ?? '') : '') ?></span>
+					</div>
+				</div>
+				<p class="autolabel-help" data-autolabel-queue-status><?= $escape($manualQueueStatusText) ?></p>
 				<div class="autolabel-progress" data-autolabel-queue-progress hidden>
 					<div class="autolabel-progress__bar" data-autolabel-queue-progress-bar style="width: 0%"></div>
 				</div>
 				<p class="autolabel-help" data-autolabel-queue-progress-text hidden>0%</p>
-				<p class="autolabel-help" data-autolabel-queue-status><?= $escape($manualQueueStatusText) ?></p>
-				<form method="post" action="<?= _url('autolabel', 'processQueue') ?>" class="autolabel-form">
-					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
-					<input type="hidden" name="queue_batch_url" value="<?= $escape($queueBatchUrl) ?>" />
-					<input type="hidden" name="queue_manual_start_url" value="<?= $escape($queueManualStartUrl) ?>" />
-					<input type="hidden" name="queue_manual_status_url" value="<?= $escape($queueManualStatusUrl) ?>" />
-					<input type="hidden" name="queue_manual_run_id" value="<?= $escape((string)($manualQueueRun['run_id'] ?? '')) ?>" />
-					<input type="hidden" name="queue_manual_status" value="<?= $escape($manualQueueStatus) ?>" />
-					<input type="hidden" name="queue_manual_initial_total" value="<?= $escape((string)$manualQueueInitialTotal) ?>" />
-					<div class="autolabel-actions">
+				<div class="autolabel-actions">
+					<form method="post" action="<?= _url('autolabel', 'processQueue') ?>" class="autolabel-form">
+						<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
+						<input type="hidden" name="queue_batch_url" value="<?= $escape($queueBatchUrl) ?>" />
+						<input type="hidden" name="queue_manual_start_url" value="<?= $escape($queueManualStartUrl) ?>" />
+						<input type="hidden" name="queue_manual_status_url" value="<?= $escape($queueManualStatusUrl) ?>" />
+						<input type="hidden" name="queue_manual_run_id" value="<?= $escape((string)($manualQueueRun['run_id'] ?? '')) ?>" />
+						<input type="hidden" name="queue_manual_status" value="<?= $escape($manualQueueStatus) ?>" />
+						<input type="hidden" name="queue_manual_initial_total" value="<?= $escape((string)$manualQueueInitialTotal) ?>" />
 						<button
 							class="btn btn--primary"
 							type="submit"
@@ -632,14 +658,18 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 							data-stalled-label="<?= $escape(_t('ext.auto_label.queue.stalled')) ?>"
 							data-failed-label="<?= $escape(_t('ext.auto_label.queue.failed')) ?>"
 						><?= _t('ext.auto_label.queue.process_now') ?></button>
-					</div>
-				</form>
-				<form method="post" action="<?= _url('autolabel', 'clearQueue') ?>" class="autolabel-form" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.queue.confirm_clear')) ?>');">
-					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
-					<div class="autolabel-actions">
+					</form>
+					<form method="post" action="<?= _url('autolabel', 'clearQueue') ?>" class="autolabel-form" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.queue.confirm_clear')) ?>');">
+						<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 						<button class="btn btn--danger" type="submit"><?= _t('ext.auto_label.queue.clear') ?></button>
-					</div>
-				</form>
+					</form>
+				</div>
+				<?php if ($queueCronUrl !== ''): ?>
+					<p class="autolabel-help"><?= _t('ext.auto_label.queue.cron_url') ?>: <code><?= $escape($queueCronUrl) ?></code></p>
+				<?php endif; ?>
+				<?php if (!$queueConcurrencyAvailable): ?>
+					<p class="autolabel-help autolabel-help--danger"><?= _t('ext.auto_label.queue.concurrency_unavailable') ?></p>
+				<?php endif; ?>
 			</div>
 		</div>
 	</section>
@@ -652,7 +682,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 
 		<div class="autolabel-grid">
 			<div class="autolabel-card">
-				<h2><?= _t('ext.auto_label.notifications.delivery') ?></h2>
+				<h3><?= _t('ext.auto_label.notifications.delivery') ?></h3>
 				<form method="post" action="<?= _url('autolabel', 'saveNotifications') ?>" class="autolabel-form">
 					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 
@@ -726,7 +756,7 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 								<?php endforeach; ?>
 							</select>
 						</label>
-						<div class="autolabel-form__columns">
+						<div class="autolabel-form__columns autolabel-form__columns--metrics">
 							<label>
 								<span><?= _t('ext.auto_label.notifications.fields.event_window_hours') ?></span>
 								<input type="number" name="event_window_hours" min="1" max="168" value="<?= $escape((string)($notificationSettings['event_window_hours'] ?? 6)) ?>" />
@@ -754,28 +784,49 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 			</div>
 
 			<div class="autolabel-card">
-				<h2><?= _t('ext.auto_label.notifications.status') ?></h2>
-				<p><?= _t('ext.auto_label.notifications.pending_email') ?>: <?= $escape((string)($notificationSummary['pending_email'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.event_candidates') ?>: <?= $escape((string)($notificationSummary['event_candidates'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.event_digests') ?>: <?= $escape((string)($notificationSummary['event_digests'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.sent_email') ?>: <?= $escape((string)($notificationSummary['sent_email'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.sent_bark') ?>: <?= $escape((string)($notificationSummary['sent_bark'] ?? 0)) ?></p>
-				<p><?= _t('ext.auto_label.notifications.sent_events') ?>: <?= $escape((string)($notificationSummary['sent_events'] ?? 0)) ?></p>
+				<h3><?= _t('ext.auto_label.notifications.status') ?></h3>
+				<div class="autolabel-stat-grid">
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.notifications.pending_email') ?></span>
+						<span class="autolabel-stat__value"><?= $escape((string)($notificationSummary['pending_email'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.notifications.event_candidates') ?></span>
+						<span class="autolabel-stat__value"><?= $escape((string)($notificationSummary['event_candidates'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.notifications.event_digests') ?></span>
+						<span class="autolabel-stat__value"><?= $escape((string)($notificationSummary['event_digests'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.notifications.sent_email') ?></span>
+						<span class="autolabel-stat__value"><?= $escape((string)($notificationSummary['sent_email'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.notifications.sent_bark') ?></span>
+						<span class="autolabel-stat__value"><?= $escape((string)($notificationSummary['sent_bark'] ?? 0)) ?></span>
+					</div>
+					<div class="autolabel-stat">
+						<span class="autolabel-stat__label"><?= _t('ext.auto_label.notifications.sent_events') ?></span>
+						<span class="autolabel-stat__value"><?= $escape((string)($notificationSummary['sent_events'] ?? 0)) ?></span>
+					</div>
+				</div>
 				<?php if (is_array($notificationSummary['last_delivery'] ?? null)): ?>
-					<pre class="autolabel-pre"><?= $escape(json_encode($notificationSummary['last_delivery'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
+					<details class="autolabel-details">
+						<summary><?= _t('ext.auto_label.misc.details') ?></summary>
+						<pre class="autolabel-pre"><?= $escape(json_encode($notificationSummary['last_delivery'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
+					</details>
 				<?php endif; ?>
-				<form method="post" action="<?= _url('autolabel', 'testNotifications') ?>" class="autolabel-form">
-					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
-					<div class="autolabel-actions">
+				<div class="autolabel-actions">
+					<form method="post" action="<?= _url('autolabel', 'testNotifications') ?>" class="autolabel-form">
+						<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 						<button class="btn" type="submit"><?= _t('ext.auto_label.notifications.actions.test') ?></button>
-					</div>
-				</form>
-				<form method="post" action="<?= _url('autolabel', 'clearNotifications') ?>" class="autolabel-form" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.notifications.confirm_clear')) ?>');">
-					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
-					<div class="autolabel-actions">
+					</form>
+					<form method="post" action="<?= _url('autolabel', 'clearNotifications') ?>" class="autolabel-form" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.notifications.confirm_clear')) ?>');">
+						<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 						<button class="btn btn--danger" type="submit"><?= _t('ext.auto_label.notifications.actions.clear') ?></button>
-					</div>
-				</form>
+					</form>
+				</div>
 			</div>
 		</div>
 	</section>
@@ -787,28 +838,26 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 		</div>
 
 		<div class="autolabel-card">
-			<form method="post" action="<?= _url('autolabel', 'saveDiagnostics') ?>" class="autolabel-form">
+			<form method="post" action="<?= _url('autolabel', 'saveDiagnostics') ?>" class="autolabel-form" id="autolabel-diagnostics-save-form">
 				<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 				<label class="checkbox">
 					<input type="checkbox" name="diagnostics_enabled" value="1" <?= $diagnosticsEnabled ? 'checked' : '' ?> />
 					<span><?= _t('ext.auto_label.diagnostics.fields.enabled') ?></span>
 				</label>
 				<p class="autolabel-help"><?= _t('ext.auto_label.diagnostics.help.enabled') ?></p>
-				<div class="autolabel-actions">
-					<button class="btn" type="submit"><?= _t('ext.auto_label.diagnostics.actions.save') ?></button>
-				</div>
 			</form>
-			<form method="post" action="<?= _url('autolabel', 'clearDiagnostics') ?>" class="autolabel-form" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.diagnostics.confirm_clear')) ?>');">
-				<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
-				<div class="autolabel-actions">
+			<div class="autolabel-actions">
+				<button class="btn btn--primary" type="submit" form="autolabel-diagnostics-save-form"><?= _t('ext.auto_label.diagnostics.actions.save') ?></button>
+				<form method="post" action="<?= _url('autolabel', 'clearDiagnostics') ?>" class="autolabel-form" onsubmit="return confirm('<?= $escape(_t('ext.auto_label.diagnostics.confirm_clear')) ?>');">
+					<input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>" />
 					<button class="btn btn--danger" type="submit"><?= _t('ext.auto_label.diagnostics.actions.clear') ?></button>
-				</div>
-			</form>
+				</form>
+			</div>
 			<?php if (!$diagnosticsEnabled): ?>
 				<p class="autolabel-help"><?= _t('ext.auto_label.diagnostics.help.disabled') ?></p>
 			<?php endif; ?>
 			<?php if (count($diagnostics) === 0): ?>
-				<p><?= _t('ext.auto_label.misc.none_yet') ?></p>
+				<div class="autolabel-empty"><p><?= _t('ext.auto_label.misc.none_yet') ?></p></div>
 			<?php else: ?>
 				<div class="autolabel-list">
 					<?php foreach ($diagnostics as $diagnostic): ?>
@@ -876,7 +925,10 @@ if ($canAdmin && ($profileForm['id'] ?? '') !== '') {
 									</span>
 								</div>
 							<?php endif; ?>
-							<pre class="autolabel-pre"><?= $escape(json_encode($diagnostic, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
+							<details class="autolabel-details">
+								<summary><?= _t('ext.auto_label.misc.details') ?></summary>
+								<pre class="autolabel-pre"><?= $escape(json_encode($diagnostic, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
+							</details>
 						</article>
 					<?php endforeach; ?>
 				</div>

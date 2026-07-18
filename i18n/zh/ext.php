@@ -95,6 +95,9 @@ return [
 				'no_tags' => '当前还没有可用的 FreshRSS 标签，请先在 FreshRSS 中创建标签。',
 				'manage_tags' => '打开 FreshRSS 标签管理',
 			],
+			'error' => [
+				'no_tags' => '请至少选择一个目标标签。',
+			],
 		],
 		'tools' => [
 			'title' => '运行工具',
@@ -268,6 +271,10 @@ return [
 			'cancel' => '取消',
 			'llm' => 'LLM',
 			'embedding' => 'Embedding',
+			'details' => '详情',
+		],
+		'layout' => [
+			'advanced' => '高级设置',
 		],
 	],
 ];
